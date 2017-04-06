@@ -15,6 +15,7 @@ type healthHandler struct {
 func (h *healthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(*h.status)
 	json.NewEncoder(w).Encode(h.health)
 }

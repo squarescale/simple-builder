@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -42,9 +43,11 @@ func main() {
 
 	log.Printf("HTTP service listening on %s", httpAddr)
 
+	ctx, cancelContext := context.WithCancel(context.Background())
 	mux := http.NewServeMux()
 	mux.Handle("/version", handlers.VersionHandler(version))
 	mux.Handle("/health", handlers.HealthHandler(&Health, &Health.Status, &Health.Lock))
+	mux.Handle("/builds", handlers.BuildsHandler(ctx))
 
 	httpServer := manners.NewServer()
 	httpServer.Addr = httpAddr
@@ -67,6 +70,7 @@ func main() {
 			}
 		case s := <-signalChan:
 			log.Println(fmt.Sprintf("Captured %v. Exiting...", s))
+			cancelContext()
 			httpServer.BlockingClose()
 			os.Exit(0)
 		}

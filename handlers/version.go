@@ -14,6 +14,7 @@ type versionHandler struct {
 }
 
 func (h *versionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	response := VersionResponse{
 		Version: h.version,
 	}
