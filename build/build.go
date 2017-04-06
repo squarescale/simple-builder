@@ -2,6 +2,8 @@ package build
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -136,6 +138,11 @@ func (b *Build) gitClone(ctx context.Context) error {
 		"USER="+os.Getenv("USER"),
 		"LOGNAME="+os.Getenv("LOGNAME"))
 
+	err = logCommand(outf, cmd)
+	if err != nil {
+		return err
+	}
+
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -154,8 +161,14 @@ func (b *Build) gitClone(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		_ = cmd.Process.Kill()
+		fmt.Fprintf(outf, "\nContext expired, command killed\n\n")
 		return ctx.Err()
 	case err := <-errChan:
+		if err == nil {
+			fmt.Fprintf(outf, "\nSuccess\n\n")
+		} else {
+			fmt.Fprintf(outf, "\nFailed: %s\n\n", err.Error())
+		}
 		return err
 	}
 }
@@ -180,7 +193,7 @@ func (b *Build) runBuildScript(ctx context.Context) error {
 	}
 	defer outf.Close()
 
-	cmd := exec.Command("build_script")
+	cmd := exec.Command(build_script)
 	cmd.Dir = checkout_dir
 	cmd.Stdout = outf
 	cmd.Stderr = outf
@@ -190,6 +203,11 @@ func (b *Build) runBuildScript(ctx context.Context) error {
 		"SHELL="+os.Getenv("SHELL"),
 		"USER="+os.Getenv("USER"),
 		"LOGNAME="+os.Getenv("LOGNAME"))
+
+	err = logCommand(outf, cmd)
+	if err != nil {
+		return err
+	}
 
 	if err := ctx.Err(); err != nil {
 		return err
@@ -209,8 +227,40 @@ func (b *Build) runBuildScript(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		_ = cmd.Process.Signal(syscall.SIGTERM)
+		fmt.Fprintf(outf, "\nContext expired, command terminated\n\n")
 		return ctx.Err()
 	case err := <-errChan:
+		if err == nil {
+			fmt.Fprintf(outf, "\nSuccess\n\n")
+		} else {
+			fmt.Fprintf(outf, "\nFailed: %s\n\n", err.Error())
+		}
 		return err
 	}
+}
+
+func logCommand(w io.Writer, cmd *exec.Cmd) error {
+	if cmd.Dir != "" {
+		_, err := fmt.Fprintf(w, "cd %s\n", cmd.Dir)
+		if err != nil {
+			return err
+		}
+	}
+	for _, env := range cmd.Env {
+		_, err := fmt.Fprintf(w, "export %s\n", env)
+		if err != nil {
+			return err
+		}
+	}
+	var args string
+	for _, arg := range cmd.Args {
+		if strings.Trim(arg, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890-_=+/.@:") != "" {
+			args += fmt.Sprintf(" '%s'", strings.Replace(arg, "'", "'\"'\"'", -1))
+		} else {
+			args += fmt.Sprintf(" %s", arg)
+		}
+	}
+	_, err := fmt.Fprintf(w, "exec%s\n\n", args)
+
+	return err
 }
