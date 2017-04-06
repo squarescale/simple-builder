@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"path"
 	"sync"
@@ -13,9 +14,10 @@ import (
 )
 
 type buildsHandler struct {
-	Lock   sync.Mutex
-	Builds map[string]*build.Build
-	ctx    context.Context
+	Lock      sync.Mutex
+	Builds    map[string]*build.Build
+	BuildsDir string
+	ctx       context.Context
 }
 
 func (h *buildsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -43,19 +45,29 @@ func (h *buildsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *buildsHandler) newBuild(w http.ResponseWriter, r *http.Request) {
 	tk := token.GenSecure(16)
 
+	work_dir, err := ioutil.TempDir(h.BuildsDir, "simple-builder")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
 	var buildDescriptor struct {
 		build.BuildDescriptor
 		Callbacks []string `json:"callbacks"`
 	}
-	err := json.NewDecoder(r.Body).Decode(&buildDescriptor)
+	err = json.NewDecoder(r.Body).Decode(&buildDescriptor)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 
+	buildDescriptor.WorkDir = work_dir
 	b := build.NewBuild(h.ctx, buildDescriptor.BuildDescriptor)
 	go h.waitBuildObject(tk, b, buildDescriptor.Callbacks)
+
+	w.Header().Set("Location", "/builds/"+tk)
 
 	json.NewEncoder(w).Encode(b)
 	h.setBuildObject(tk, b)
@@ -128,8 +140,10 @@ func (h *buildsHandler) getBuildOutput(id string, w http.ResponseWriter, r *http
 	http.ServeFile(w, r, b.OutputFileName())
 }
 
-func BuildsHandler(ctx context.Context) http.Handler {
+func BuildsHandler(ctx context.Context, builds_dir string) http.Handler {
 	return &buildsHandler{
-		ctx: ctx,
+		ctx:       ctx,
+		BuildsDir: builds_dir,
+		Builds:    make(map[string]*build.Build),
 	}
 }
