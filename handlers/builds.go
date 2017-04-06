@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"path"
 	"sync"
@@ -64,6 +65,7 @@ func (h *buildsHandler) newBuild(w http.ResponseWriter, r *http.Request) {
 	}
 
 	buildDescriptor.WorkDir = work_dir
+	log.Printf("[build %s] start", tk)
 	b := build.NewBuild(h.ctx, buildDescriptor.BuildDescriptor)
 	go h.waitBuildObject(tk, b, buildDescriptor.Callbacks)
 
@@ -76,15 +78,23 @@ func (h *buildsHandler) newBuild(w http.ResponseWriter, r *http.Request) {
 func (h *buildsHandler) waitBuildObject(tk string, build *build.Build, callbacks []string) {
 	<-build.Done()
 
-	data, err := json.Marshal(build)
-	if err != nil {
-		for _, cb := range callbacks {
-			res, err := http.Post(cb, "application/json", bytes.NewBuffer(data))
-			_ = err
-			_ = res
+	if len(callbacks) > 0 {
+		data, err := json.Marshal(build)
+		if err != nil {
+			log.Printf("[build %s] callback serialize error: %s", tk, err.Error())
+		} else {
+			for _, cb := range callbacks {
+				log.Printf("[build %s] call %s", tk, cb)
+				res, err := http.Post(cb, "application/json", bytes.NewBuffer(data))
+				if err != nil {
+					log.Printf("[build %s] callback error: %s", tk, err.Error())
+				}
+				_ = res
+			}
 		}
 	}
 
+	log.Printf("[build %s] done", tk)
 	h.deleteBuildObject(tk)
 }
 

@@ -13,14 +13,14 @@ import (
 )
 
 type BuildDescriptor struct {
-	WorkDir        string
-	BuildScript    string
-	GitUrl         string
-	GitSecretKey   string
-	GitBranch      string
-	GitFullClone   bool
-	GitRecursive   bool
-	GitCheckoutDir string
+	WorkDir        string `json:"-"`
+	BuildScript    string `json:"build_script"`
+	GitUrl         string `json:"git_url"`
+	GitSecretKey   string `json:"git_secret_key"`
+	GitBranch      string `json:"git_branch"`
+	GitFullClone   bool   `json:"git_full_clone"`
+	GitRecursive   bool   `json:"git_recursive"`
+	GitCheckoutDir string `json:"git_checkout_dir"`
 }
 
 type Build struct {
