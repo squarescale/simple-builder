@@ -50,13 +50,25 @@ if git_sha_1_process.returncode != 0:
 
 git_sha_1 = git_sha_1_process.stdout.replace("\n", "")
 
+# Find exact tag
+draft = True
+try:
+    git_sha_1_process = subprocess.run(
+        "git describe --exact-match", stdout=subprocess.PIPE,
+        shell=True, check=True, universal_newlines=True)
+    if git_sha_1_process.returncode == 0:
+        draft = False
+        git_sha_1 = git_sha_1_process.stdout.replace("\n", "")
+except subprocess.CalledProcessError:
+    pass
+
 # Create new release
 print("Create new release draft...")
 headers = { "Content-Type": "application/json" }
 data = {
     "tag_name": git_sha_1,
     "name": "release " + git_sha_1,
-    "draft": False
+    "draft": draft
 }
 
 created = requests.post(url, auth=(user, token), headers=headers, json=data)
