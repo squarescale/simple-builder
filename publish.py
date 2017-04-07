@@ -55,8 +55,8 @@ print("Create new release draft...")
 headers = { "Content-Type": "application/json" }
 data = {
     "tag_name": git_sha_1,
-    "name": "cli latest release (" + git_sha_1 + ")",
-    "draft": True
+    "name": "release " + git_sha_1,
+    "draft": False
 }
 
 created = requests.post(url, auth=(user, token), headers=headers, json=data)

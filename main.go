@@ -15,7 +15,7 @@ import (
 	"github.com/squarescale/simple-builder/handlers"
 )
 
-const version = "1.0.0"
+var version string
 
 var Health struct {
 	Lock   sync.Mutex
