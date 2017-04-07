@@ -25,10 +25,10 @@ type BuildDescriptor struct {
 
 type Build struct {
 	BuildDescriptor
-	ProcessState *os.ProcessState
+	ProcessState *os.ProcessState `json:"process_state"`
 	cancelFunc   context.CancelFunc
-	Errors       []error
-	Output       []byte
+	Errors       []error `json:"errors"`
+	Output       []byte  `json:"output"`
 	done         chan struct{}
 }
 
