@@ -1,0 +1,14 @@
+language: go
+dist: trusty
+addons:
+  apt:
+    packages:
+      - python3
+      - python3-requests
+      - python3-pip
+before_install:
+  - pip3 install requests
+script:
+  - GOOS=linux GOARCH=amd64 go build -o simple-builder-linux-amd64 .
+  - GITHUB_REPO=squarescale/simple-builder BIN_FILES="simple-builder-linux-amd64" python3 publish.py
+
