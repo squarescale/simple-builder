@@ -16,6 +16,7 @@ import (
 )
 
 var version string
+var buildsHandler handlers.BuildsHandler
 
 var Health struct {
 	Lock   sync.Mutex
@@ -44,14 +45,17 @@ func main() {
 	log.Printf("HTTP service listening on %s", httpAddr)
 
 	ctx, cancelContext := context.WithCancel(context.Background())
+	buildsHandler = handlers.NewBuildsHandler(ctx, "")
 	mux := http.NewServeMux()
 	mux.Handle("/version", handlers.VersionHandler(version))
 	mux.Handle("/health", handlers.HealthHandler(&Health, &Health.Status, &Health.Lock))
-	mux.Handle("/builds", handlers.BuildsHandler(ctx, ""))
+	mux.Handle("/builds", buildsHandler)
 
 	httpServer := manners.NewServer()
 	httpServer.Addr = httpAddr
 	httpServer.Handler = handlers.LoggingHandler(mux)
+
+	go runSQSListener(ctx)
 
 	errChan := make(chan error, 10)
 

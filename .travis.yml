@@ -9,6 +9,6 @@ addons:
 before_install:
   - pip3 install requests
 script:
-  - GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$(git describe --always --dirty)" -o simple-builder-linux-amd64 .
+  - GOOS=linux GOARCH=amd64 go build -tags sqs -ldflags "-X main.version=$(git describe --always --dirty)" -o simple-builder-linux-amd64 .
   - GITHUB_REPO=squarescale/simple-builder BIN_FILES="simple-builder-linux-amd64" python3 publish.py
 

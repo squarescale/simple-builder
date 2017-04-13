@@ -14,6 +14,11 @@ import (
 	"github.com/squarescale/simple-builder/util/token"
 )
 
+type BuildsHandler interface {
+	http.Handler
+	CreateBuild(descr build.BuildDescriptor, callbacks []string) (b *build.Build, tk string, err error)
+}
+
 type buildsHandler struct {
 	Lock      sync.Mutex
 	Builds    map[string]*build.Build
@@ -44,35 +49,42 @@ func (h *buildsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *buildsHandler) newBuild(w http.ResponseWriter, r *http.Request) {
-	tk := token.GenSecure(16)
-
-	work_dir, err := ioutil.TempDir(h.BuildsDir, "simple-builder")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-		return
-	}
-
 	var buildDescriptor struct {
 		build.BuildDescriptor
 		Callbacks []string `json:"callbacks"`
 	}
-	err = json.NewDecoder(r.Body).Decode(&buildDescriptor)
+	err := json.NewDecoder(r.Body).Decode(&buildDescriptor)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 
-	buildDescriptor.WorkDir = work_dir
-	log.Printf("[build %s] start", tk)
-	b := build.NewBuild(h.ctx, buildDescriptor.BuildDescriptor)
-	go h.waitBuildObject(tk, b, buildDescriptor.Callbacks)
+	b, tk, err := h.CreateBuild(buildDescriptor.BuildDescriptor, buildDescriptor.Callbacks)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
 
 	w.Header().Set("Location", "/builds/"+tk)
-
 	json.NewEncoder(w).Encode(b)
+}
+
+func (h *buildsHandler) CreateBuild(descr build.BuildDescriptor, callbacks []string) (b *build.Build, tk string, err error) {
+	tk = token.GenSecure(16)
+	work_dir, err := ioutil.TempDir(h.BuildsDir, "simple-builder")
+	if err != nil {
+		return nil, tk, err
+	}
+
+	descr.WorkDir = work_dir
+	log.Printf("[build %s] start", tk)
+	b = build.NewBuild(h.ctx, descr)
+	go h.waitBuildObject(tk, b, callbacks)
+
 	h.setBuildObject(tk, b)
+	return b, tk, nil
 }
 
 func (h *buildsHandler) waitBuildObject(tk string, build *build.Build, callbacks []string) {
@@ -150,7 +162,7 @@ func (h *buildsHandler) getBuildOutput(id string, w http.ResponseWriter, r *http
 	http.ServeFile(w, r, b.OutputFileName())
 }
 
-func BuildsHandler(ctx context.Context, builds_dir string) http.Handler {
+func NewBuildsHandler(ctx context.Context, builds_dir string) BuildsHandler {
 	return &buildsHandler{
 		ctx:       ctx,
 		BuildsDir: builds_dir,

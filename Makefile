@@ -1,7 +1,7 @@
 VERSION = $(shell git describe --always --dirty)
 
 build: ## Build
-	go build -ldflags "-X main.version=$(VERSION)" .
+	go build -tags "$(GOTAGS)" -ldflags "-X main.version=$(VERSION)" .
 
 test: ## Run tests
 	go test ./...
