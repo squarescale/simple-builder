@@ -32,7 +32,7 @@ func GetenvDef(name, def string) string {
 }
 
 func main() {
-	log.Println("Starting Simple Builder...")
+	log.Printf("Starting Simple Builder version %s...", version)
 
 	httpAddr := os.Getenv("NOMAD_ADDR_http")
 	if httpAddr == "" {
