@@ -16,7 +16,7 @@ import (
 	"github.com/squarescale/simple-builder/build"
 )
 
-const sqsPollTime = 60
+const sqsPollTime = 20
 const sqsHideTime = 60
 
 func runSQSListener(ctx context.Context) {
