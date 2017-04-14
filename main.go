@@ -76,6 +76,7 @@ func main() {
 			log.Println(fmt.Sprintf("Captured %v. Exiting...", s))
 			cancelContext()
 			httpServer.BlockingClose()
+			log.Println("Terminated.")
 			os.Exit(0)
 		}
 	}

@@ -76,7 +76,7 @@ func runSQSListener(ctx context.Context) {
 func sqsHandleMessage(ctx context.Context, input_sqs string, svc *sqs.SQS, msg *sqs.Message) {
 	var err error
 
-	log.Printf("SQS[%s]: Handle message %s", input_sqs, msg.ReceiptHandle)
+	log.Printf("SQS[%s]: Handle message %s", input_sqs, *msg.ReceiptHandle)
 
 	var buildDescriptor struct {
 		build.BuildDescriptor
@@ -84,13 +84,13 @@ func sqsHandleMessage(ctx context.Context, input_sqs string, svc *sqs.SQS, msg *
 	}
 	err = json.Unmarshal([]byte(*msg.Body), &buildDescriptor)
 	if err != nil {
-		log.Printf("SQS[%s]: error unmarshaling message %s: %s", input_sqs, msg.ReceiptHandle, err)
+		log.Printf("SQS[%s]: error unmarshaling message %s: %s", input_sqs, *msg.ReceiptHandle, err)
 		return
 	}
 
 	b, tk, err := buildsHandler.CreateBuild(buildDescriptor.BuildDescriptor, buildDescriptor.Callbacks)
 	if err != nil {
-		log.Printf("SQS[%s]: error creating build for message %s: %s", input_sqs, msg.ReceiptHandle, err)
+		log.Printf("SQS[%s]: error creating build for message %s: %s", input_sqs, *msg.ReceiptHandle, err)
 		return
 	}
 
@@ -102,7 +102,7 @@ func sqsHandleMessage(ctx context.Context, input_sqs string, svc *sqs.SQS, msg *
 		ReceiptHandle: msg.ReceiptHandle,
 	})
 	if err != nil {
-		log.Printf("SQS[%s]: error deleting message message %s: %s", input_sqs, msg.ReceiptHandle, err)
+		log.Printf("SQS[%s]: error deleting message message %s: %s", input_sqs, *msg.ReceiptHandle, err)
 		return
 	}
 }
