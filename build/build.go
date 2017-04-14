@@ -132,7 +132,7 @@ func (b *Build) gitClone(ctx context.Context) error {
 	cmd.Stdout = outf
 	cmd.Stderr = outf
 	cmd.Env = append(cmd.Env,
-		"GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no -i .ssh/id",
+		"GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i .ssh/id",
 		"HOME="+b.WorkDir,
 		"PATH="+os.Getenv("PATH"),
 		"SHELL="+os.Getenv("SHELL"),
