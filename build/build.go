@@ -2,6 +2,7 @@ package build
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -27,9 +28,17 @@ type Build struct {
 	BuildDescriptor
 	ProcessState *os.ProcessState `json:"process_state"`
 	cancelFunc   context.CancelFunc
-	Errors       []error `json:"errors"`
-	Output       string  `json:"output"`
+	Errors       []*BuildError `json:"errors"`
+	Output       string        `json:"output"`
 	done         chan struct{}
+}
+
+type BuildError struct {
+	error
+}
+
+func (err *BuildError) MarshalJSON() ([]byte, error) {
+	return json.Marshal(err.Error())
 }
 
 func NewBuild(ctx context.Context, descr BuildDescriptor) *Build {
@@ -69,20 +78,20 @@ func (b *Build) run(ctx context.Context) {
 		var err error
 		bytes, err := ioutil.ReadFile(out_file)
 		if err != nil {
-			b.Errors = append(b.Errors, err)
+			b.Errors = append(b.Errors, &BuildError{err})
 		}
 		b.Output = string(bytes)
 	}()
 
 	err := b.gitClone(ctx)
 	if err != nil {
-		b.Errors = append(b.Errors, err)
+		b.Errors = append(b.Errors, &BuildError{err})
 		return
 	}
 
 	err = b.runBuildScript(ctx)
 	if err != nil {
-		b.Errors = append(b.Errors, err)
+		b.Errors = append(b.Errors, &BuildError{err})
 		return
 	}
 }
