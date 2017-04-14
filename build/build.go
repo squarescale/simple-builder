@@ -28,7 +28,7 @@ type Build struct {
 	ProcessState *os.ProcessState `json:"process_state"`
 	cancelFunc   context.CancelFunc
 	Errors       []error `json:"errors"`
-	Output       []byte  `json:"output"`
+	Output       string  `json:"output"`
 	done         chan struct{}
 }
 
@@ -67,10 +67,11 @@ func (b *Build) run(ctx context.Context) {
 	var out_file = filepath.Join(b.WorkDir, "output.log")
 	defer func() {
 		var err error
-		b.Output, err = ioutil.ReadFile(out_file)
+		bytes, err := ioutil.ReadFile(out_file)
 		if err != nil {
 			b.Errors = append(b.Errors, err)
 		}
+		b.Output = string(bytes)
 	}()
 
 	err := b.gitClone(ctx)
