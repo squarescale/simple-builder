@@ -80,6 +80,8 @@ func (h *buildsHandler) CreateBuild(descr build.BuildDescriptor, callbacks []str
 
 	descr.WorkDir = work_dir
 	log.Printf("[build %s] start", tk)
+	log.Printf("[build %s] Git URL: %s", tk, descr.GitUrl)
+	log.Printf("[build %s] Build script:\n%s", tk, descr.BuildScript)
 	b = build.NewBuild(h.ctx, descr)
 	go h.waitBuildObject(tk, b, callbacks)
 
@@ -107,7 +109,15 @@ func (h *buildsHandler) waitBuildObject(tk string, build *build.Build, callbacks
 	}
 
 	log.Printf("[build %s] done", tk)
-	h.deleteBuildObject(tk)
+	b := h.deleteBuildObject(tk)
+	if len(b.Errors) == 0 {
+		log.Printf("[build %s] Success", tk)
+	} else {
+		for _, e := range b.Errors {
+			log.Printf("[build %s] Error: %v", tk, e)
+		}
+	}
+	log.Printf("[build %s] Output:\n%s", tk, b.Output)
 }
 
 func (h *buildsHandler) setBuildObject(tk string, build *build.Build) {
