@@ -1,6 +1,10 @@
+.DEFAULT_GOAL := build
 VERSION = $(shell git describe --always --dirty)
 
-build: ## Build
+deps: ## Dependencies
+	go get ./...
+
+build: deps ## Build
 	go build -tags "$(GOTAGS)" -ldflags "-X main.version=$(VERSION)" .
 
 test: ## Run tests
