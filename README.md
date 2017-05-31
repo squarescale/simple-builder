@@ -36,7 +36,7 @@ API
     - `git_url`: the Git checkout URL
     - `git_secret_key`: optional SSH secret key for the git clone
     - `git_branch`: optional git branch to clone
-    - `git_ful_clone`: don't limit depth for git clone
+    - `git_full_clone`: don't limit depth for git clone
     - `git_recursive`: clone recursively
     - `git_checkout_dir`: subdirectory name to clone to, defaults to the last
       part of the `git_url`
