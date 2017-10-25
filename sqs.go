@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -18,6 +19,7 @@ import (
 
 const sqsPollTime = 20
 const sqsHideTime = 60
+const sqsHideRefresh = 30
 
 func runSQSListener(ctx context.Context) {
 	input_sqs := os.Getenv("SIMPLE_BUILDER_INPUT_SQS")
@@ -67,7 +69,7 @@ func runSQSListener(ctx context.Context) {
 				if ctx.Err() != nil {
 					break
 				}
-				sqsHandleMessage(ctx, input_sqs, svc, msg)
+				go sqsHandleMessage(ctx, input_sqs, svc, msg)
 			}
 		}
 	}
@@ -94,15 +96,35 @@ func sqsHandleMessage(ctx context.Context, input_sqs string, svc *sqs.SQS, msg *
 		return
 	}
 
-	_ = b
-	_ = tk
+	log.Printf("[build %s] imported from sqs message %s", tk, *msg.ReceiptHandle)
 
-	_, err = svc.DeleteMessage(&sqs.DeleteMessageInput{
-		QueueUrl:      aws.String(input_sqs),
-		ReceiptHandle: msg.ReceiptHandle,
-	})
-	if err != nil {
-		log.Printf("SQS[%s]: error deleting message message %s: %s", input_sqs, *msg.ReceiptHandle, err)
-		return
+	for ctx.Err() == nil {
+		tmout, _ := context.WithTimeout(ctx, sqsHideRefresh*time.Second)
+		select {
+		case <-ctx.Done():
+		case <-b.Done():
+			log.Printf("[build %s] delete SQS message", tk)
+			_, err = svc.DeleteMessage(&sqs.DeleteMessageInput{
+				QueueUrl:      aws.String(input_sqs),
+				ReceiptHandle: msg.ReceiptHandle,
+			})
+			if err != nil {
+				log.Printf("[build %s] SQS[%s]: error deleting message message %s: %s", tk, input_sqs, *msg.ReceiptHandle, err)
+				return
+			}
+			return
+		case <-tmout.Done():
+			log.Printf("[build %s] hide SQS message for %d seconds", tk, sqsHideTime)
+			_, err = svc.ChangeMessageVisibility(&sqs.ChangeMessageVisibilityInput{
+				QueueUrl:          aws.String(input_sqs),
+				ReceiptHandle:     msg.ReceiptHandle,
+				VisibilityTimeout: aws.Int64(sqsHideTime),
+			})
+			if err != nil {
+				log.Printf("[build %s] SQS[%s]: error deleting message message %s: %s", tk, input_sqs, *msg.ReceiptHandle, err)
+				return
+			}
+		}
 	}
+
 }
