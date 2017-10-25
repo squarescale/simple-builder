@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import os, requests, subprocess, sys
+import os, requests, subprocess, sys, json
 
 user_token = os.environ.get("GITHUB_USER_TOKEN")
 if user_token is None:
@@ -30,37 +30,23 @@ if releases.status_code != 200:
     print("Error: GET releases " + str(releases.status_code))
     sys.exit(1)
 
-# Clear all previous drafts
-print("Remove old release drafts...")
-for release in releases.json():
-    if release["draft"]:
-        delete_url = url + "/" + str(release["id"])
-        deleted = requests.delete(delete_url, auth=(user, token))
-        if deleted.status_code != 204:
-            print("Error: DELETE draft " + str(deleted.status_code))
-            sys.exit(1)
+git_branch = None
+git_sha_1  = None
+
+try:
+    git_branch = subprocess.check_output(
+        "git describe --exact-match",
+        shell=True, universal_newlines=True).replace("\n", "")
+except Exception:
+    pass
 
 # Find sha1
-git_sha_1_process = subprocess.run(
-    "git describe --always", stdout=subprocess.PIPE,
-    shell=True, check=True, universal_newlines=True)
-if git_sha_1_process.returncode != 0:
-    print("Error: Cannot retrieve sha1 of this repository")
-    sys.exit(1)
-
-git_sha_1 = git_sha_1_process.stdout.replace("\n", "")
-
-# Find exact tag
-draft = True
-try:
-    git_sha_1_process = subprocess.run(
-        "git describe --exact-match", stdout=subprocess.PIPE,
-        shell=True, check=True, universal_newlines=True)
-    if git_sha_1_process.returncode == 0:
-        draft = False
-        git_sha_1 = git_sha_1_process.stdout.replace("\n", "")
-except subprocess.CalledProcessError:
-    pass
+if git_branch:
+    git_sha_1 = git_branch
+else:
+    git_sha_1 = subprocess.check_output(
+        "git describe --always",
+        shell=True, universal_newlines=True).replace("\n", "")
 
 # Create new release
 print("Create new release draft...")
@@ -68,10 +54,10 @@ headers = { "Content-Type": "application/json" }
 data = {
     "tag_name": git_sha_1,
     "name": "release " + git_sha_1,
-    "draft": draft
+    "draft": git_branch == None
 }
 
-created = requests.post(url, auth=(user, token), headers=headers, json=data)
+created = requests.post(url, auth=(user, token), headers=headers, data=json.dumps(data))
 if created.status_code != 201:
     print("Error: POST draft " + str(created.status_code))
     sys.exit(1)
@@ -95,6 +81,16 @@ for executable in bin_files:
 
         if uploaded.status_code != 201:
             print("Error: Upload " + executable + " " + str(uploaded.status_code))
+            sys.exit(1)
+
+# Clear all previous drafts
+print("Remove old release drafts...")
+for release in releases.json():
+    if release["draft"]:
+        delete_url = url + "/" + str(release["id"])
+        deleted = requests.delete(delete_url, auth=(user, token))
+        if deleted.status_code != 204:
+            print("Error: DELETE draft " + str(deleted.status_code))
             sys.exit(1)
 
 print("Done.")
