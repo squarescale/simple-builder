@@ -6,15 +6,19 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/hpcloud/tail"
 )
 
 type BuildDescriptor struct {
 	WorkDir        string `json:"-"`
+	Token          string `json:"-"`
 	BuildScript    string `json:"build_script"`
 	GitUrl         string `json:"git_url"`
 	GitSecretKey   string `json:"git_secret_key"`
@@ -81,6 +85,27 @@ func (b *Build) run(ctx context.Context) {
 			b.Errors = append(b.Errors, &BuildError{err})
 		}
 		b.Output = string(bytes)
+	}()
+
+	go func() {
+		t, err := tail.TailFile(out_file, tail.Config{Follow: true})
+		if err != nil {
+			log.Printf("[build %s output error] %s", b.Token, err.Error())
+			return
+		}
+		tailCtx, tailStop := context.WithCancel(context.Background())
+		go func() {
+			select {
+			case <-ctx.Done():
+				t.Stop()
+			case <-tailCtx.Done():
+			}
+		}()
+		defer t.Cleanup()
+		for line := range t.Lines {
+			log.Printf("[build %s output] %s", b.Token, line.Text)
+		}
+		tailStop()
 	}()
 
 	err := b.gitClone(ctx)
