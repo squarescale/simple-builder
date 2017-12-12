@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -51,33 +50,22 @@ func main() {
 	mux.Handle("/health", handlers.HealthHandler(&Health, &Health.Status, &Health.Lock))
 	mux.Handle("/builds", buildsHandler)
 
-	httpServer := manners.NewServer()
-	httpServer.Addr = httpAddr
-	httpServer.Handler = handlers.LoggingHandler(mux)
+	httpServer := manners.NewWithServer(&http.Server{
+		Addr:    httpAddr,
+		Handler: handlers.LoggingHandler(mux),
+	})
 
 	go runSQSListener(ctx)
 
-	errChan := make(chan error, 10)
-
 	go func() {
-		errChan <- httpServer.ListenAndServe()
+		sigchan := make(chan os.Signal, 1)
+		signal.Notify(sigchan, os.Interrupt, os.Kill, syscall.SIGTERM)
+		s := <-sigchan
+		log.Printf("Captured %v. Shutting down...", s)
+		signal.Stop(sigchan)
+		cancelContext()
+		httpServer.Close()
 	}()
 
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-
-	for {
-		select {
-		case err := <-errChan:
-			if err != nil {
-				log.Fatal(err)
-			}
-		case s := <-signalChan:
-			log.Println(fmt.Sprintf("Captured %v. Exiting...", s))
-			cancelContext()
-			httpServer.BlockingClose()
-			log.Println("Terminated.")
-			os.Exit(0)
-		}
-	}
+	log.Fatal(httpServer.ListenAndServe())
 }
