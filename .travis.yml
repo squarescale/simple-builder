@@ -10,7 +10,7 @@ before_install:
   - pip3 install requests
 script:
   - go get .
-  - go get github.com/aws/aws-sdk-go
+  - make get-dep vendor
   - GOOS=linux GOARCH=amd64 go build -tags sqs -ldflags "-X main.version=$(git describe --always --dirty)" -o simple-builder-linux-amd64 .
   - GITHUB_REPO=squarescale/simple-builder BIN_FILES="simple-builder-linux-amd64" python3 publish.py
 
