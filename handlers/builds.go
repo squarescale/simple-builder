@@ -79,6 +79,7 @@ func (h *buildsHandler) CreateBuild(descr build.BuildDescriptor, callbacks []str
 	}
 
 	descr.WorkDir = work_dir
+	descr.Token = tk
 	log.Printf("[build %s] start", tk)
 	log.Printf("[build %s] Git URL: %s", tk, descr.GitUrl)
 	log.Printf("[build %s] Build script:\n%s", tk, descr.BuildScript)
