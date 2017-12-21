@@ -14,22 +14,54 @@ import (
 	"github.com/squarescale/simple-builder/util/token"
 )
 
+type BuildDescriptorWithCallback struct {
+	build.BuildDescriptor
+	Callbacks []string `json:"callbacks"`
+}
+
 type BuildsHandler interface {
 	http.Handler
-	CreateBuild(descr build.BuildDescriptor, callbacks []string) (b *build.Build, tk string, err error)
+	CreateBuild(wg *sync.WaitGroup, descr BuildDescriptorWithCallback) (b *build.Build, tk string, err error)
 }
 
 type buildsHandler struct {
-	Lock      sync.Mutex
-	Builds    map[string]*build.Build
-	BuildsDir string
-	ctx       context.Context
+	SingleBuild bool
+	Lock        sync.Mutex
+	Builds      map[string]*build.Build
+	BuildsDir   string
+	ctx         context.Context
+}
+
+func (h *buildsHandler) uniqueBuildId() string {
+	if !h.SingleBuild || len(h.Builds) > 1 {
+		panic("more than one build in single build mode")
+	}
+	for k := range h.Builds {
+		return k
+	}
+	return ""
 }
 
 func (h *buildsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	if (r.URL.Path == "/builds" || r.URL.Path == "/builds/") && r.Method == http.MethodPost {
-		h.newBuild(w, r)
+	if h.SingleBuild && path.Dir(r.URL.Path) == "/build" {
+		build_id := h.uniqueBuildId()
+		route := path.Base(r.URL.Path)
+		if build_id == "" {
+			w.WriteHeader(http.StatusNotFound)
+		} else if route == "wait" {
+			h.waitBuild(build_id, w, r)
+		} else if route == "output" {
+			h.getBuildOutput(build_id, w, r)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	} else if (r.URL.Path == "/builds" || r.URL.Path == "/builds/") && r.Method == http.MethodPost {
+		if h.SingleBuild {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			h.newBuild(w, r)
+		}
 	} else if path.Dir(r.URL.Path) == "/builds" {
 		build_id := path.Base(r.URL.Path)
 		h.getBuild(build_id, w, r)
@@ -49,10 +81,7 @@ func (h *buildsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *buildsHandler) newBuild(w http.ResponseWriter, r *http.Request) {
-	var buildDescriptor struct {
-		build.BuildDescriptor
-		Callbacks []string `json:"callbacks"`
-	}
+	var buildDescriptor BuildDescriptorWithCallback
 	err := json.NewDecoder(r.Body).Decode(&buildDescriptor)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -60,7 +89,7 @@ func (h *buildsHandler) newBuild(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	b, tk, err := h.CreateBuild(buildDescriptor.BuildDescriptor, buildDescriptor.Callbacks)
+	b, tk, err := h.CreateBuild(new(sync.WaitGroup), buildDescriptor)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
@@ -71,7 +100,8 @@ func (h *buildsHandler) newBuild(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(b)
 }
 
-func (h *buildsHandler) CreateBuild(descr build.BuildDescriptor, callbacks []string) (b *build.Build, tk string, err error) {
+func (h *buildsHandler) CreateBuild(wg *sync.WaitGroup, descr BuildDescriptorWithCallback) (b *build.Build, tk string, err error) {
+	wg.Add(1)
 	tk = token.GenSecure(16)
 	work_dir, err := ioutil.TempDir(h.BuildsDir, "simple-builder")
 	if err != nil {
@@ -83,14 +113,15 @@ func (h *buildsHandler) CreateBuild(descr build.BuildDescriptor, callbacks []str
 	log.Printf("[build %s] start", tk)
 	log.Printf("[build %s] Git URL: %s", tk, descr.GitUrl)
 	log.Printf("[build %s] Build script:\n%s", tk, descr.BuildScript)
-	b = build.NewBuild(h.ctx, descr)
-	go h.waitBuildObject(tk, b, callbacks)
+	b = build.NewBuild(h.ctx, descr.BuildDescriptor)
+	go h.waitBuildObject(wg, tk, b, descr.Callbacks)
 
 	h.setBuildObject(tk, b)
 	return b, tk, nil
 }
 
-func (h *buildsHandler) waitBuildObject(tk string, build *build.Build, callbacks []string) {
+func (h *buildsHandler) waitBuildObject(wg *sync.WaitGroup, tk string, build *build.Build, callbacks []string) {
+	defer wg.Done()
 	<-build.Done()
 
 	if len(callbacks) > 0 {
@@ -173,10 +204,11 @@ func (h *buildsHandler) getBuildOutput(id string, w http.ResponseWriter, r *http
 	http.ServeFile(w, r, b.OutputFileName())
 }
 
-func NewBuildsHandler(ctx context.Context, builds_dir string) BuildsHandler {
+func NewBuildsHandler(ctx context.Context, builds_dir string, singleBuild bool) BuildsHandler {
 	return &buildsHandler{
-		ctx:       ctx,
-		BuildsDir: builds_dir,
-		Builds:    make(map[string]*build.Build),
+		SingleBuild: singleBuild,
+		ctx:         ctx,
+		BuildsDir:   builds_dir,
+		Builds:      make(map[string]*build.Build),
 	}
 }

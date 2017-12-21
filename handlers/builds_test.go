@@ -23,7 +23,7 @@ func TestBuildHTTPWait(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := BuildsHandler(ctx, tmp_dir)
+	handler := NewBuildsHandler(ctx, tmp_dir, false)
 	test_dir, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -85,7 +85,7 @@ func TestBuildHTTPCallback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := BuildsHandler(ctx, tmp_dir)
+	handler := NewBuildsHandler(ctx, tmp_dir, false)
 	test_dir, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
