@@ -1,0 +1,5 @@
+{
+  "callbacks": [],
+  "build_script": "#!/bin/sh\necho error\nexit 1\n",
+  "git_url": "git@github.com:mildred/hello.git"
+}

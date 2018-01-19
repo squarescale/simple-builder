@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -14,7 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 
-	"github.com/squarescale/simple-builder/build"
+	"github.com/squarescale/simple-builder/handlers"
 )
 
 const sqsPollTime = 20
@@ -80,17 +81,14 @@ func sqsHandleMessage(ctx context.Context, input_sqs string, svc *sqs.SQS, msg *
 
 	log.Printf("SQS[%s]: Handle message %s", input_sqs, *msg.ReceiptHandle)
 
-	var buildDescriptor struct {
-		build.BuildDescriptor
-		Callbacks []string `json:"callbacks"`
-	}
+	var buildDescriptor handlers.BuildDescriptorWithCallback
 	err = json.Unmarshal([]byte(*msg.Body), &buildDescriptor)
 	if err != nil {
 		log.Printf("SQS[%s]: error unmarshaling message %s: %s", input_sqs, *msg.ReceiptHandle, err)
 		return
 	}
 
-	b, tk, err := buildsHandler.CreateBuild(buildDescriptor.BuildDescriptor, buildDescriptor.Callbacks)
+	b, tk, err := buildsHandler.CreateBuild(new(sync.WaitGroup), buildDescriptor)
 	if err != nil {
 		log.Printf("SQS[%s]: error creating build for message %s: %s", input_sqs, *msg.ReceiptHandle, err)
 		return
