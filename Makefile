@@ -1,5 +1,6 @@
 .DEFAULT_GOAL := build
 VERSION = $(shell git describe --always --dirty)
+GOTAGS ?= sqs
 
 deps: ## Dependencies
 	go get ./...
