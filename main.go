@@ -24,14 +24,6 @@ var Health struct {
 	Status int
 }
 
-func GetenvDef(name, def string) string {
-	res := os.Getenv(name)
-	if res == "" {
-		res = def
-	}
-	return res
-}
-
 func main() {
 	log.Printf("Starting Simple Builder version %s...", version)
 
