@@ -55,7 +55,7 @@ func TestBuildHTTPWait(t *testing.T) {
 	}
 	loc := res.Header.Get("Location")
 	if loc == "" {
-		t.Errorf("POST /builds: unexpected Location header %#s", loc)
+		t.Errorf("POST /builds: unexpected Location header %s", loc)
 	}
 
 	res, err = http.Get(srv.URL + loc + "/wait")
@@ -72,10 +72,10 @@ func TestBuildHTTPWait(t *testing.T) {
 
 	expected_output := "main.go\nsimple-builder\nOK\n"
 	if !strings.Contains(string(b.Output), expected_output) {
-		t.Error("Output unexpected: %#s\n%s", expected_output, string(b.Output))
+		t.Errorf("Output unexpected: %s\n%s", expected_output, string(b.Output))
 	}
 	if len(b.Errors) > 0 {
-		t.Error("Errors unexpected: %#v", b.Errors)
+		t.Errorf("Errors unexpected: %+v", b.Errors)
 	}
 }
 
@@ -109,10 +109,10 @@ func TestBuildHTTPCallback(t *testing.T) {
 
 		expected_output := "main.go\nsimple-builder\nOK\n"
 		if !strings.Contains(string(b.Output), expected_output) {
-			t.Error("Output unexpected: %#s\n%s", expected_output, string(b.Output))
+			t.Errorf("Output unexpected: %s\n%s", expected_output, string(b.Output))
 		}
 		if len(b.Errors) > 0 {
-			t.Error("Errors unexpected: %#v", b.Errors)
+			t.Errorf("Errors unexpected: %+v", b.Errors)
 		}
 
 		close(doneChan)
@@ -138,7 +138,7 @@ func TestBuildHTTPCallback(t *testing.T) {
 	}
 	loc := res.Header.Get("Location")
 	if loc == "" {
-		t.Errorf("POST /builds: unexpected Location header %#s", loc)
+		t.Errorf("POST /builds: unexpected Location header %s", loc)
 	}
 
 	select {
