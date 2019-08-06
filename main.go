@@ -19,11 +19,6 @@ import (
 var version string
 var buildsHandler handlers.BuildsHandler
 
-var Health struct {
-	Lock   sync.Mutex
-	Status int
-}
-
 func main() {
 	log.Printf("Starting Simple Builder version %s...", version)
 
@@ -69,7 +64,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/version", handlers.VersionHandler(version))
-	mux.Handle("/health", handlers.HealthHandler(&Health, &Health.Status, &Health.Lock))
+	mux.Handle("/health", handlers.HealthHandler())
 	mux.Handle("/builds", buildsHandler)
 
 	httpServer := manners.NewWithServer(&http.Server{
