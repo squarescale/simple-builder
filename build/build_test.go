@@ -5,11 +5,12 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/suite"
 )
 
-var secret_deploy_key = `-----BEGIN OPENSSH PRIVATE KEY-----
+const SECRET_DEPLOY_KEY = `-----BEGIN OPENSSH PRIVATE KEY-----
 b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
 QyNTUxOQAAACBdAHOwhOxFF3/kjC1JET9dWPdvh8PVt+gJ9ckmEXJlAQAAAJhtJ3SzbSd0
 swAAAAtzc2gtZWQyNTUxOQAAACBdAHOwhOxFF3/kjC1JET9dWPdvh8PVt+gJ9ckmEXJlAQ
@@ -18,30 +19,45 @@ AAAECEgoZ07SQ9CJ5AaB2rtMXI08sMvtMxm9gJMzFfvWf3pl0Ac7CE7EUXf+SMLUkRP11Y
 -----END OPENSSH PRIVATE KEY-----
 `
 
-var public_deploy_key string = `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF0Ac7CE7EUXf+SMLUkRP11Y92+Hw9W36An1ySYRcmUB`
+// must be installed as a deploy key here:
+// https://github.com/squarescale/simple-builder/settings/keys
+const PUBLIC_DEPLOY_KEY = `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF0Ac7CE7EUXf+SMLUkRP11Y92+Hw9W36An1ySYRcmUB`
 
-func TestBuild(t *testing.T) {
+type BuildTestSuite struct {
+	suite.Suite
+
+	tmpDir string
+}
+
+func (s *BuildTestSuite) SetupTest() {
+	d, err := ioutil.TempDir(
+		"", "simple-builder-test-builds",
+	)
+
+	s.Nil(err)
+
+	s.tmpDir = d
+}
+
+func (s *BuildTestSuite) TearDownTest() {
+	err := os.RemoveAll(s.tmpDir)
+	s.Nil(err)
+}
+
+func (s *BuildTestSuite) TestFullBuild() {
 	ctx := context.Background()
-	work_dir, err := ioutil.TempDir("", "simple-builder-test-build")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		err := os.RemoveAll(work_dir)
-		if err != nil {
-			log.Print(err)
-		}
-	}()
 
-	b := NewBuild(ctx, BuildDescriptor{
-		WorkDir:      work_dir,
-		BuildScript:  "#!/bin/bash\nls main.go\nbasename \"$PWD\"\necho OK\nexit 0",
-		GitUrl:       "git@github.com:squarescale/simple-builder.git",
-		GitSecretKey: secret_deploy_key,
-	})
+	b := NewBuild(
+		ctx,
+		BuildDescriptor{
+			WorkDir:      s.tmpDir,
+			BuildScript:  "#!/bin/bash\nls main.go\nbasename \"$PWD\"\necho OK\nexit 0",
+			GitUrl:       "git@github.com:squarescale/simple-builder.git",
+			GitSecretKey: SECRET_DEPLOY_KEY,
+		},
+	)
 
 	<-b.Done()
-	expected_output := "main.go\nsimple-builder\nOK\n"
 
 	log.Printf("Output:\n%s\n", string(b.Output))
 
@@ -49,9 +65,19 @@ func TestBuild(t *testing.T) {
 	log.Printf("Process State: %#v", *b.ProcessState)
 	log.Println()
 	log.Printf("Actual Output:   %#v", string(b.Output))
-	log.Printf("Expected Output: %#v", expected_output)
 
-	if len(b.Errors) > 0 || !strings.Contains(string(b.Output), expected_output) {
-		t.Fail()
-	}
+	expectedOutput := "main.go\nsimple-builder\nOK\n"
+
+	log.Printf("Expected Output: %#v", expectedOutput)
+
+	s.Empty(b.Errors)
+
+	s.Contains(
+		string(b.Output),
+		expectedOutput,
+	)
+}
+
+func TestBuildTestSuite(t *testing.T) {
+	suite.Run(t, new(BuildTestSuite))
 }
