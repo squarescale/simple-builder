@@ -77,7 +77,7 @@ func (b *Build) Done() <-chan struct{} {
 func (b *Build) run(ctx context.Context) {
 	defer close(b.done)
 
-	var out_file = filepath.Join(b.WorkDir, "output.log")
+	var out_file = b.outputFileName()
 	defer func() {
 		var err error
 		bytes, err := ioutil.ReadFile(out_file)
@@ -133,9 +133,7 @@ func (b *Build) gitClone(ctx context.Context) error {
 	}
 
 	out, err := createOutputFile(
-		filepath.Join(
-			b.WorkDir, "output.log",
-		),
+		b.outputFileName(),
 	)
 
 	if err != nil {
@@ -144,12 +142,9 @@ func (b *Build) gitClone(ctx context.Context) error {
 
 	defer out.Close()
 
-	checkoutDir := filepath.Join(
-		b.WorkDir, "workspace", b.GitCheckoutDir,
-	)
-
 	cmd := exec.Command(
-		"git", b.gitCloneArgs(checkoutDir)...,
+		"git",
+		b.gitCloneArgs(b.checkoutDir())...,
 	)
 
 	cmd.Dir = b.WorkDir
@@ -207,38 +202,41 @@ func (b *Build) runBuildScript(ctx context.Context) error {
 		return err
 	}
 
-	var checkout_dir = filepath.Join(b.WorkDir, "workspace", b.GitCheckoutDir)
 	var build_script = filepath.Join(b.WorkDir, "build")
-	var out_file = filepath.Join(b.WorkDir, "output.log")
 
 	err = ioutil.WriteFile(build_script, []byte(b.BuildScript), 0700)
 	if err != nil {
 		return err
 	}
 
-	outf, err := os.OpenFile(out_file, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
+	out, err := createOutputFile(
+		b.outputFileName(),
+	)
+
 	if err != nil {
 		return err
 	}
-	defer outf.Close()
+
+	defer out.Close()
 
 	cmd := exec.Command(build_script)
-	cmd.Dir = checkout_dir
-	cmd.Stdout = outf
-	cmd.Stderr = outf
-	cmd.Env = append(cmd.Env,
-		"HOME="+b.WorkDir,
-		"PATH="+os.Getenv("PATH"),
-		"SHELL="+os.Getenv("SHELL"),
-		"USER="+os.Getenv("USER"),
-		"LOGNAME="+os.Getenv("LOGNAME"))
 
-	err = logCommand(outf, cmd)
+	cmd.Dir = b.checkoutDir()
+
+	cmd.Stdout = out
+	cmd.Stderr = out
+
+	cmd.Env = append(
+		cmd.Env, b.commonEnv()...,
+	)
+
+	err = logCommand(out, cmd)
 	if err != nil {
 		return err
 	}
 
-	if err := ctx.Err(); err != nil {
+	err = ctx.Err()
+	if err != nil {
 		return err
 	}
 
@@ -256,13 +254,13 @@ func (b *Build) runBuildScript(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		_ = cmd.Process.Signal(syscall.SIGTERM)
-		fmt.Fprintf(outf, "\nContext expired, command terminated\n\n")
+		fmt.Fprintf(out, "\nContext expired, command terminated\n\n")
 		return ctx.Err()
 	case err := <-errChan:
 		if err == nil {
-			fmt.Fprintf(outf, "\nSuccess\n\n")
+			fmt.Fprintf(out, "\nSuccess\n\n")
 		} else {
-			fmt.Fprintf(outf, "\nFailed: %s\n\n", err.Error())
+			fmt.Fprintf(out, "\nFailed: %s\n\n", err.Error())
 		}
 		return err
 	}
@@ -353,6 +351,18 @@ func (b *Build) gitSSHCommand() string {
 			},
 			" ",
 		),
+	)
+}
+
+func (b *Build) checkoutDir() string {
+	return filepath.Join(
+		b.WorkDir, "workspace", b.GitCheckoutDir,
+	)
+}
+
+func (b *Build) outputFileName() string {
+	return filepath.Join(
+		b.WorkDir, "output.log",
 	)
 }
 
