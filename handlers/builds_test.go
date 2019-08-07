@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,87 +14,127 @@ import (
 	"time"
 
 	"github.com/squarescale/simple-builder/build"
+
+	"github.com/stretchr/testify/suite"
 )
 
-func TestBuildHTTPWait(t *testing.T) {
-	ctx := context.Background()
-	tmp_dir, err := ioutil.TempDir("", "simple-builder-test-builds")
-	if err != nil {
-		t.Fatal(err)
-	}
-	handler := NewBuildsHandler(ctx, tmp_dir, false)
-	test_dir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		err := os.RemoveAll(tmp_dir)
-		if err != nil {
-			log.Print(err)
-		}
-	}()
+type BuildsHandlerTestSuite struct {
+	suite.Suite
+
+	tmpDir string
+	wd     string
+}
+
+func (s *BuildsHandlerTestSuite) SetupTest() {
+	d, err := ioutil.TempDir(
+		"", "simple-builder-test-builds",
+	)
+
+	s.Nil(err)
+
+	s.tmpDir = d
+
+	// ---
+
+	wd, err := os.Getwd()
+	s.Nil(err)
+
+	s.wd = wd
+}
+
+func (s *BuildsHandlerTestSuite) TearDownTest() {
+	err := os.RemoveAll(s.tmpDir)
+	s.Nil(err)
+}
+
+func (s *BuildsHandlerTestSuite) TestBuildHTTPWait() {
+	handler := NewBuildsHandler(
+		context.Background(), s.tmpDir, false,
+	)
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
-	data, err := json.Marshal(build.BuildDescriptor{
-		BuildScript: "#!/bin/bash\nls main.go\nbasename \"$PWD\"\necho OK\nexit 0",
-		GitUrl:      filepath.Dir(test_dir),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	res, err := http.Post(srv.URL+"/builds", "application/json", bytes.NewBuffer(data))
-	if err != nil {
-		t.Fatal(err)
-	}
+	data, err := json.Marshal(
+		build.BuildDescriptor{
+			BuildScript: shellScript(
+				[]string{
+					"ls main.go",
+					"basename \"$PWD\"",
+					"sleep 1",
+					"echo OK",
+					"exit 0",
+				},
+			),
+			GitUrl: filepath.Dir(s.wd),
+		},
+	)
 
-	if res.StatusCode != http.StatusOK {
-		t.Errorf("POST /builds: unexpected status code %d", res.StatusCode)
-	}
+	s.Nil(err)
+
+	res, err := http.Post(
+		srv.URL+"/builds",
+		"application/json",
+		bytes.NewBuffer(data),
+	)
+
+	s.Nil(err)
+
+	s.Equalf(
+		res.StatusCode,
+		http.StatusOK,
+		"POST /builds: unexpected status code %d",
+		res.StatusCode,
+	)
+
 	loc := res.Header.Get("Location")
-	if loc == "" {
-		t.Errorf("POST /builds: unexpected Location header %s", loc)
-	}
 
-	res, err = http.Get(srv.URL + loc + "/wait")
-	if err != nil {
-		t.Fatal(err)
-	}
+	s.NotEmptyf(
+		loc,
+		"POST /builds: unexpected Location header %s",
+		loc,
+	)
 
-	if res.StatusCode != http.StatusOK {
-		t.Errorf("GET %s/wait: unexpected status code %d", loc, res.StatusCode)
-	}
+	res, err = http.Get(
+		srv.URL + loc + "/wait",
+	)
+
+	s.Nil(err)
+
+	s.Equalf(
+		res.StatusCode,
+		http.StatusOK,
+		"GET %s/wait: unexpected status code %d",
+		loc,
+		res.StatusCode,
+	)
 
 	var b build.Build
 	json.NewDecoder(res.Body).Decode(&b)
 
-	expected_output := "main.go\nsimple-builder\nOK\n"
-	if !strings.Contains(string(b.Output), expected_output) {
-		t.Errorf("Output unexpected: %s\n%s", expected_output, string(b.Output))
-	}
-	if len(b.Errors) > 0 {
-		t.Errorf("Errors unexpected: %+v", b.Errors)
-	}
+	s.Contains(
+		string(b.Output),
+		strings.Join(
+			[]string{
+				"main.go",
+				"simple-builder",
+				"OK",
+			}, "\n",
+		),
+	)
+
+	s.Empty(b.Errors)
 }
 
-func TestBuildHTTPCallback(t *testing.T) {
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	tmp_dir, err := ioutil.TempDir("", "simple-builder-test-builds")
-	if err != nil {
-		t.Fatal(err)
-	}
-	handler := NewBuildsHandler(ctx, tmp_dir, false)
-	test_dir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		err := os.RemoveAll(tmp_dir)
-		if err != nil {
-			log.Print(err)
-		}
-	}()
+func (s *BuildsHandlerTestSuite) TestBuildHTTPCallback() {
+	ctx, _ := context.WithTimeout(
+		context.Background(),
+		5*time.Second,
+	)
+
+	handler := NewBuildsHandler(
+		ctx, s.tmpDir, false,
+	)
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -103,47 +142,86 @@ func TestBuildHTTPCallback(t *testing.T) {
 	doneChan := make(chan struct{})
 
 	mux := http.NewServeMux()
+
 	mux.HandleFunc("/cb", func(w http.ResponseWriter, r *http.Request) {
 		var b build.Build
 		json.NewDecoder(r.Body).Decode(&b)
+		s.Contains(
+			string(b.Output),
+			strings.Join(
+				[]string{
+					"main.go",
+					"simple-builder",
+					"OK",
+				}, "\n",
+			),
+		)
 
-		expected_output := "main.go\nsimple-builder\nOK\n"
-		if !strings.Contains(string(b.Output), expected_output) {
-			t.Errorf("Output unexpected: %s\n%s", expected_output, string(b.Output))
-		}
-		if len(b.Errors) > 0 {
-			t.Errorf("Errors unexpected: %+v", b.Errors)
-		}
+		s.Empty(b.Errors)
 
 		close(doneChan)
 	})
+
 	callback_srv := httptest.NewServer(mux)
 	defer callback_srv.Close()
 
 	data, err := json.Marshal(map[string]interface{}{
-		"build_script": "#!/bin/bash\nls main.go\nbasename \"$PWD\"\necho OK\nexit 0",
-		"git_url":      filepath.Dir(test_dir),
-		"callbacks":    []string{callback_srv.URL + "/cb"},
+		"git_url": filepath.Dir(s.wd),
+		"build_script": shellScript(
+			[]string{
+				"ls main.go",
+				"basename \"$PWD\"",
+				"echo OK",
+				"exit 0",
+			},
+		),
+		"callbacks": []string{
+			callback_srv.URL + "/cb",
+		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	res, err := http.Post(srv.URL+"/builds", "application/json", bytes.NewBuffer(data))
-	if err != nil {
-		t.Fatal(err)
-	}
 
-	if res.StatusCode != http.StatusOK {
-		t.Errorf("POST /builds: unexpected status code %d", res.StatusCode)
-	}
+	s.Nil(err)
+
+	res, err := http.Post(
+		srv.URL+"/builds",
+		"application/json",
+		bytes.NewBuffer(data),
+	)
+
+	s.Nil(err)
+
+	s.Equalf(
+		res.StatusCode,
+		http.StatusOK,
+		"POST /builds: unexpected status code %d",
+		res.StatusCode,
+	)
+
 	loc := res.Header.Get("Location")
-	if loc == "" {
-		t.Errorf("POST /builds: unexpected Location header %s", loc)
-	}
+
+	s.NotEmptyf(
+		loc,
+		"POST /builds: unexpected Location header %s",
+		loc,
+	)
 
 	select {
 	case <-doneChan:
 	case <-ctx.Done():
-		t.Error("Timed out")
+		s.Fail("Timed out")
 	}
+}
+
+func TestBuildsHandlerTestSuite(t *testing.T) {
+	suite.Run(t, new(BuildsHandlerTestSuite))
+}
+
+func shellScript(lines []string) string {
+	return strings.Join(
+		append(
+			[]string{"#!/bin/bash"},
+			lines...,
+		),
+		"\n",
+	)
 }
