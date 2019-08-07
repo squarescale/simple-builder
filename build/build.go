@@ -122,63 +122,56 @@ func (b *Build) run(ctx context.Context) {
 }
 
 func (b *Build) gitClone(ctx context.Context) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	var checkout_dir = filepath.Join(b.WorkDir, "workspace", b.GitCheckoutDir)
-	var ssh_dir = filepath.Join(b.WorkDir, ".ssh")
-	var ssh_id = filepath.Join(ssh_dir, "id")
-	var out_file = filepath.Join(b.WorkDir, "output.log")
-
-	if b.GitSecretKey != "" {
-		err := os.MkdirAll(ssh_dir, 0700)
-		if err != nil {
-			return err
-		}
-
-		err = ioutil.WriteFile(ssh_id, []byte(b.GitSecretKey), 0600)
-		if err != nil {
-			return err
-		}
-	}
-
-	outf, err := os.OpenFile(out_file, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0600)
+	err := ctx.Err()
 	if err != nil {
 		return err
 	}
-	defer outf.Close()
 
-	var args []string
-	args = append(args, "clone")
-	if !b.GitFullClone {
-		args = append(args, "--depth", "1")
+	err = b.maybeWriteGitSecretKey()
+	if err != nil {
+		return err
 	}
-	if !b.GitRecursive {
-		args = append(args, "--recursive")
+
+	out, err := createOutputFile(
+		filepath.Join(
+			b.WorkDir, "output.log",
+		),
+	)
+
+	if err != nil {
+		return err
 	}
-	if b.GitBranch != "" {
-		args = append(args, "-b", b.GitBranch)
-	}
-	args = append(args, b.GitUrl, checkout_dir)
-	cmd := exec.Command("git", args...)
+
+	defer out.Close()
+
+	checkoutDir := filepath.Join(
+		b.WorkDir, "workspace", b.GitCheckoutDir,
+	)
+
+	cmd := exec.Command(
+		"git", b.gitCloneArgs(checkoutDir)...,
+	)
+
 	cmd.Dir = b.WorkDir
-	cmd.Stdout = outf
-	cmd.Stderr = outf
-	cmd.Env = append(cmd.Env,
-		"GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i .ssh/id",
-		"HOME="+b.WorkDir,
-		"PATH="+os.Getenv("PATH"),
-		"SHELL="+os.Getenv("SHELL"),
-		"USER="+os.Getenv("USER"),
-		"LOGNAME="+os.Getenv("LOGNAME"))
 
-	err = logCommand(outf, cmd)
+	cmd.Stdout = out
+	cmd.Stderr = out
+
+	cmd.Env = append(
+		cmd.Env, b.gitSSHCommand(),
+	)
+
+	cmd.Env = append(
+		cmd.Env, b.commonEnv()...,
+	)
+
+	err = logCommand(out, cmd)
 	if err != nil {
 		return err
 	}
 
-	if err := ctx.Err(); err != nil {
+	err = ctx.Err()
+	if err != nil {
 		return err
 	}
 
@@ -196,20 +189,21 @@ func (b *Build) gitClone(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		_ = cmd.Process.Kill()
-		fmt.Fprintf(outf, "\nContext expired, command killed\n\n")
+		fmt.Fprintf(out, "\nContext expired, command killed\n\n")
 		return ctx.Err()
 	case err := <-errChan:
 		if err == nil {
-			fmt.Fprintf(outf, "\nSuccess\n\n")
+			fmt.Fprintf(out, "\nSuccess\n\n")
 		} else {
-			fmt.Fprintf(outf, "\nFailed: %s\n\n", err.Error())
+			fmt.Fprintf(out, "\nFailed: %s\n\n", err.Error())
 		}
 		return err
 	}
 }
 
 func (b *Build) runBuildScript(ctx context.Context) error {
-	if err := ctx.Err(); err != nil {
+	err := ctx.Err()
+	if err != nil {
 		return err
 	}
 
@@ -217,7 +211,7 @@ func (b *Build) runBuildScript(ctx context.Context) error {
 	var build_script = filepath.Join(b.WorkDir, "build")
 	var out_file = filepath.Join(b.WorkDir, "output.log")
 
-	err := ioutil.WriteFile(build_script, []byte(b.BuildScript), 0700)
+	err = ioutil.WriteFile(build_script, []byte(b.BuildScript), 0700)
 	if err != nil {
 		return err
 	}
@@ -274,6 +268,96 @@ func (b *Build) runBuildScript(ctx context.Context) error {
 	}
 }
 
+func (b *Build) gitCloneArgs(checkoutDir string) []string {
+	args := []string{
+		"clone",
+	}
+
+	if !b.GitFullClone {
+		args = append(
+			args, "--depth", "1",
+		)
+	}
+
+	// WTF ?!?!
+	if !b.GitRecursive {
+		args = append(
+			args, "--recursive",
+		)
+	}
+
+	if b.GitBranch != "" {
+		args = append(
+			args, "-b", b.GitBranch,
+		)
+	}
+
+	args = append(
+		args, b.GitUrl, checkoutDir,
+	)
+
+	return args
+}
+
+func (b *Build) commonEnv() []string {
+	env := map[string]string{
+		"HOME": b.WorkDir,
+	}
+
+	keys := []string{
+		"PATH", "SHELL", "USER", "LOGNAME",
+	}
+
+	for _, k := range keys {
+		env[k] = os.Getenv(k)
+	}
+
+	// ---
+
+	buff := []string{}
+
+	for k, v := range env {
+		buff = append(
+			buff, fmt.Sprintf("%s=%s", k, v),
+		)
+	}
+
+	return buff
+}
+
+func (b *Build) maybeWriteGitSecretKey() error {
+	if b.GitSecretKey == "" {
+		return nil
+	}
+
+	sshDir := filepath.Join(
+		b.WorkDir, ".ssh",
+	)
+
+	return writeSSHKey(
+		sshDir, "id", b.GitSecretKey,
+	)
+}
+
+func (b *Build) gitSSHCommand() string {
+	return fmt.Sprintf(
+		"%s=%s",
+		"GIT_SSH_COMMAND",
+		strings.Join(
+			[]string{
+				"ssh",
+				"-v",
+				"-o StrictHostKeyChecking=no",
+				"-o UserKnownHostsFile=/dev/null",
+				"-i .ssh/id",
+			},
+			" ",
+		),
+	)
+}
+
+// ----
+
 func logCommand(w io.Writer, cmd *exec.Cmd) error {
 	if cmd.Dir != "" {
 		_, err := fmt.Fprintf(w, "cd %s\n", cmd.Dir)
@@ -298,4 +382,27 @@ func logCommand(w io.Writer, cmd *exec.Cmd) error {
 	_, err := fmt.Fprintf(w, "exec%s\n\n", args)
 
 	return err
+}
+
+func writeSSHKey(dir string, file string, contents string) error {
+	err := os.MkdirAll(dir, 0700)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(
+		filepath.Join(
+			dir, file,
+		),
+		[]byte(contents),
+		0600,
+	)
+}
+
+func createOutputFile(path string) (*os.File, error) {
+	return os.OpenFile(
+		path,
+		os.O_WRONLY|os.O_APPEND|os.O_CREATE,
+		0600,
+	)
 }

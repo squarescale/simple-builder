@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -78,6 +79,36 @@ func (s *BuildTestSuite) TestFullBuild() {
 	)
 }
 
+func (s *BuildTestSuite) TestWriteSSHKey() {
+	sshDir := filepath.Join(s.tmpDir, ".ssh")
+	s.EnsureDoesNotExist(sshDir)
+
+	keyFile := filepath.Join(sshDir, "id")
+	s.EnsureDoesNotExist(keyFile)
+
+	err := writeSSHKey(
+		sshDir, "id", "plop",
+	)
+
+	s.Nil(err)
+
+	s.DirExists(sshDir)
+	s.FileExists(keyFile)
+	info, err := os.Stat(keyFile)
+	s.Nil(err)
+	s.Equal(info.Mode(), os.FileMode(0600))
+
+	buff, err := ioutil.ReadFile(keyFile)
+	s.Nil(err)
+	s.Equal(buff, []byte("plop"))
+}
+
 func TestBuildTestSuite(t *testing.T) {
 	suite.Run(t, new(BuildTestSuite))
+}
+
+func (s *BuildTestSuite) EnsureDoesNotExist(path string) {
+	_, err := os.Stat(path)
+	s.NotNil(err)
+	s.True(os.IsNotExist(err))
 }
