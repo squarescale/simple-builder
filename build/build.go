@@ -38,6 +38,7 @@ type Build struct {
 
 func NewBuild(ctx context.Context, descr BuildDescriptor) *Build {
 	ctx2, cancelFunc := context.WithCancel(ctx)
+
 	b := &Build{
 		BuildDescriptor: descr,
 		cancelFunc:      cancelFunc,
@@ -66,23 +67,29 @@ func (b *Build) Done() <-chan struct{} {
 func (b *Build) run(ctx context.Context) {
 	defer close(b.done)
 
-	var out_file = b.OutputFileName()
-	defer func() {
-		var err error
-		bytes, err := ioutil.ReadFile(out_file)
-		if err != nil {
-			b.Errors = append(b.Errors, &BuildError{err})
-		}
-		b.Output = string(bytes)
-	}()
+	out := b.OutputFileName()
+
+	defer b.prepareBuildOutput()
 
 	go func() {
-		t, err := tail.TailFile(out_file, tail.Config{Follow: true})
+		t, err := tail.TailFile(
+			out, tail.Config{Follow: true},
+		)
+
 		if err != nil {
-			log.Printf("[build %s output error] %s", b.Token, err.Error())
+			log.Printf(
+				"[build %s output error] %s",
+				b.Token,
+				err.Error(),
+			)
+
 			return
 		}
-		tailCtx, tailStop := context.WithCancel(context.Background())
+
+		tailCtx, tailStop := context.WithCancel(
+			context.Background(),
+		)
+
 		go func() {
 			select {
 			case <-ctx.Done():
@@ -90,10 +97,17 @@ func (b *Build) run(ctx context.Context) {
 			case <-tailCtx.Done():
 			}
 		}()
+
 		defer t.Cleanup()
+
 		for line := range t.Lines {
-			log.Printf("[build %s output] %s", b.Token, line.Text)
+			log.Printf(
+				"[build %s output] %s",
+				b.Token,
+				line.Text,
+			)
 		}
+
 		tailStop()
 	}()
 
@@ -359,6 +373,20 @@ func (b *Build) checkoutDir() string {
 	return filepath.Join(
 		b.WorkDir, "workspace", b.GitCheckoutDir,
 	)
+}
+
+func (b *Build) prepareBuildOutput() {
+	out := b.OutputFileName()
+
+	bytes, err := ioutil.ReadFile(out)
+
+	if err != nil {
+		b.Errors = append(
+			b.Errors, &BuildError{err},
+		)
+	}
+
+	b.Output = string(bytes)
 }
 
 // ----
