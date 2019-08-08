@@ -2,7 +2,6 @@ package build
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -35,14 +34,6 @@ type Build struct {
 	Errors       []*BuildError `json:"errors"`
 	Output       string        `json:"output"`
 	done         chan struct{}
-}
-
-type BuildError struct {
-	error
-}
-
-func (err *BuildError) MarshalJSON() ([]byte, error) {
-	return json.Marshal(err.Error())
 }
 
 func NewBuild(ctx context.Context, descr BuildDescriptor) *Build {
