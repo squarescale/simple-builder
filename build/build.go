@@ -66,7 +66,7 @@ func (b *Build) Done() <-chan struct{} {
 func (b *Build) run(ctx context.Context) {
 	defer close(b.done)
 
-	var out_file = b.outputFileName()
+	var out_file = b.OutputFileName()
 	defer func() {
 		var err error
 		bytes, err := ioutil.ReadFile(out_file)
@@ -122,7 +122,7 @@ func (b *Build) gitClone(ctx context.Context) error {
 	}
 
 	out, err := createOutputFile(
-		b.outputFileName(),
+		b.OutputFileName(),
 	)
 
 	if err != nil {
@@ -199,7 +199,7 @@ func (b *Build) runBuildScript(ctx context.Context) error {
 	}
 
 	out, err := createOutputFile(
-		b.outputFileName(),
+		b.OutputFileName(),
 	)
 
 	if err != nil {
@@ -358,12 +358,6 @@ func (b *Build) gitSSHCommand() string {
 func (b *Build) checkoutDir() string {
 	return filepath.Join(
 		b.WorkDir, "workspace", b.GitCheckoutDir,
-	)
-}
-
-func (b *Build) outputFileName() string {
-	return filepath.Join(
-		b.WorkDir, "output.log",
 	)
 }
 
