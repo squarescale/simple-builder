@@ -103,6 +103,49 @@ func (s *BuildTestSuite) TestWriteSSHKey() {
 	s.Equal(buff, []byte("plop"))
 }
 
+func (s *BuildTestSuite) TestMaybeSetGitCheckoutDir() {
+	b := &Build{
+		BuildDescriptor: BuildDescriptor{
+			GitUrl:         "git@github.com:squarescale/simple-builder.git",
+			GitCheckoutDir: "x",
+		},
+	}
+
+	s.Equal(b.GitCheckoutDir, "x")
+
+	b.maybeSetGitCheckoutDir()
+
+	s.Equal(b.GitCheckoutDir, "x")
+
+	// ----
+
+	b = &Build{
+		BuildDescriptor: BuildDescriptor{
+			GitUrl: "git@github.com:squarescale/simple-builder.git",
+		},
+	}
+
+	s.Empty(b.GitCheckoutDir, "")
+
+	b.maybeSetGitCheckoutDir()
+
+	s.Equal(b.GitCheckoutDir, "simple-builder")
+
+	// ----
+
+	b = &Build{
+		BuildDescriptor: BuildDescriptor{
+			GitUrl: "git@github.com:squarescale/simple-builder",
+		},
+	}
+
+	s.Empty(b.GitCheckoutDir, "")
+
+	b.maybeSetGitCheckoutDir()
+
+	s.Equal(b.GitCheckoutDir, "simple-builder")
+}
+
 func TestBuildTestSuite(t *testing.T) {
 	suite.Run(t, new(BuildTestSuite))
 }

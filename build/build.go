@@ -43,13 +43,11 @@ func NewBuild(ctx context.Context, descr BuildDescriptor) *Build {
 		cancelFunc:      cancelFunc,
 		done:            make(chan struct{}, 0),
 	}
-	if b.GitCheckoutDir == "" {
-		b.GitCheckoutDir = filepath.Base(b.GitUrl)
-		if strings.HasSuffix(b.GitCheckoutDir, ".git") {
-			b.GitCheckoutDir = b.GitCheckoutDir[:len(b.GitCheckoutDir)-4]
-		}
-	}
+
+	b.maybeSetGitCheckoutDir()
+
 	go b.run(ctx2)
+
 	return b
 }
 
@@ -326,6 +324,18 @@ func (b *Build) maybeWriteGitSecretKey() error {
 	return writeSSHKey(
 		sshDir, "id", b.GitSecretKey,
 	)
+}
+
+func (b *Build) maybeSetGitCheckoutDir() {
+	if b.GitCheckoutDir != "" {
+		return
+	}
+
+	b.GitCheckoutDir = filepath.Base(b.GitUrl)
+
+	if strings.HasSuffix(b.GitCheckoutDir, ".git") {
+		b.GitCheckoutDir = b.GitCheckoutDir[:len(b.GitCheckoutDir)-4]
+	}
 }
 
 func (b *Build) gitSSHCommand() string {
