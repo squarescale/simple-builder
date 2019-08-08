@@ -67,49 +67,9 @@ func (b *Build) Done() <-chan struct{} {
 func (b *Build) run(ctx context.Context) {
 	defer close(b.done)
 
-	out := b.OutputFileName()
-
 	defer b.prepareBuildOutput()
 
-	go func() {
-		t, err := tail.TailFile(
-			out, tail.Config{Follow: true},
-		)
-
-		if err != nil {
-			log.Printf(
-				"[build %s output error] %s",
-				b.Token,
-				err.Error(),
-			)
-
-			return
-		}
-
-		tailCtx, tailStop := context.WithCancel(
-			context.Background(),
-		)
-
-		go func() {
-			select {
-			case <-ctx.Done():
-				t.Stop()
-			case <-tailCtx.Done():
-			}
-		}()
-
-		defer t.Cleanup()
-
-		for line := range t.Lines {
-			log.Printf(
-				"[build %s output] %s",
-				b.Token,
-				line.Text,
-			)
-		}
-
-		tailStop()
-	}()
+	go b.tailBuildOutput(ctx)
 
 	err := b.gitClone(ctx)
 	if err != nil {
@@ -387,6 +347,47 @@ func (b *Build) prepareBuildOutput() {
 	}
 
 	b.Output = string(bytes)
+}
+
+func (b *Build) tailBuildOutput(ctx context.Context) {
+	t, err := tail.TailFile(
+		b.OutputFileName(),
+		tail.Config{Follow: true},
+	)
+
+	if err != nil {
+		log.Printf(
+			"[build %s output error] %s",
+			b.Token,
+			err.Error(),
+		)
+
+		return
+	}
+
+	tailCtx, tailStop := context.WithCancel(
+		context.Background(),
+	)
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			t.Stop()
+		case <-tailCtx.Done():
+		}
+	}()
+
+	defer t.Cleanup()
+
+	for line := range t.Lines {
+		log.Printf(
+			"[build %s output] %s",
+			b.Token,
+			line.Text,
+		)
+	}
+
+	tailStop()
 }
 
 // ----
