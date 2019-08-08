@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/braintree/manners"
+	"github.com/squarescale/libsqsc/env"
 	"github.com/squarescale/simple-builder/build"
 	"github.com/squarescale/simple-builder/handlers"
 )
@@ -22,18 +23,21 @@ var buildsHandler handlers.BuildsHandler
 func main() {
 	log.Printf("Starting Simple Builder version %s...", version)
 
+	httpAddr := env.GetWithDefault(
+		"NOMAD_ADDR_http",
+		"localhost:80",
+	)
+
 	var buildJobFile string
-	httpAddr := os.Getenv("NOMAD_ADDR_http")
-	if httpAddr == "" {
-		httpAddr = "localhost:80"
-	}
 
 	flag.StringVar(&httpAddr, "http", httpAddr, "Listening address")
 	flag.StringVar(&buildJobFile, "build-job", "", "Build job file (single job mode)")
 	flag.Parse()
 
 	var wg sync.WaitGroup
-	ctx, cancelContext := context.WithCancel(context.Background())
+	ctx, cancelContext := context.WithCancel(
+		context.Background(),
+	)
 
 	var singleBuildDescriptor handlers.BuildDescriptorWithCallback
 	var singleBuildMode bool
