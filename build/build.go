@@ -165,9 +165,7 @@ func (b *Build) runBuildScript(ctx context.Context) error {
 		return err
 	}
 
-	var build_script = filepath.Join(b.WorkDir, "build")
-
-	err = ioutil.WriteFile(build_script, []byte(b.BuildScript), 0700)
+	buildScript, err := b.writeBuildScript()
 	if err != nil {
 		return err
 	}
@@ -182,7 +180,7 @@ func (b *Build) runBuildScript(ctx context.Context) error {
 
 	defer out.Close()
 
-	cmd := exec.Command(build_script)
+	cmd := exec.Command(buildScript)
 
 	cmd.Dir = b.checkoutDir()
 
@@ -388,6 +386,20 @@ func (b *Build) tailBuildOutput(ctx context.Context) {
 	}
 
 	tailStop()
+}
+
+func (b *Build) writeBuildScript() (string, error) {
+	buildFile := filepath.Join(
+		b.WorkDir, "build",
+	)
+
+	err := ioutil.WriteFile(
+		buildFile,
+		[]byte(b.BuildScript),
+		0700,
+	)
+
+	return buildFile, err
 }
 
 // ----

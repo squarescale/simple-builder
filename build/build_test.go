@@ -146,6 +146,47 @@ func (s *BuildTestSuite) TestMaybeSetGitCheckoutDir() {
 	s.Equal(b.GitCheckoutDir, "simple-builder")
 }
 
+func (s *BuildTestSuite) TestWriteBuildScript() {
+	b := &Build{
+		BuildDescriptor: BuildDescriptor{
+			WorkDir:     s.tmpDir,
+			BuildScript: "hello",
+		},
+	}
+
+	buildScriptFile := filepath.Join(
+		b.WorkDir, "build",
+	)
+
+	s.EnsureDoesNotExist(
+		buildScriptFile,
+	)
+
+	b.writeBuildScript()
+
+	s.FileExists(
+		buildScriptFile,
+	)
+
+	info, err := os.Stat(
+		buildScriptFile,
+	)
+
+	s.Nil(err)
+
+	s.Equal(
+		info.Mode(),
+		os.FileMode(0700),
+	)
+
+	buff, err := ioutil.ReadFile(
+		buildScriptFile,
+	)
+
+	s.Nil(err)
+	s.Equal(buff, []byte(b.BuildScript))
+}
+
 func TestBuildTestSuite(t *testing.T) {
 	suite.Run(t, new(BuildTestSuite))
 }
