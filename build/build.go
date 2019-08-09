@@ -288,12 +288,14 @@ func (b *Build) maybeWriteGitSecretKey() error {
 		return nil
 	}
 
-	sshDir := filepath.Join(
-		b.WorkDir, ".ssh",
-	)
-
 	return writeSSHKey(
-		sshDir, "id", b.GitSecretKey,
+		b.sshDir(), "id", b.GitSecretKey,
+	)
+}
+
+func (b *Build) sshDir() string {
+	return filepath.Join(
+		b.WorkDir, ".ssh",
 	)
 }
 
@@ -319,7 +321,7 @@ func (b *Build) gitSSHCommand() string {
 				"-v",
 				"-o StrictHostKeyChecking=no",
 				"-o UserKnownHostsFile=/dev/null",
-				"-i .ssh/id",
+				fmt.Sprintf("-i %s/id", b.sshDir()),
 			},
 			" ",
 		),
