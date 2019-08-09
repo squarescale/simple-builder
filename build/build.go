@@ -17,7 +17,6 @@ import (
 
 type BuildDescriptor struct {
 	WorkDir        string `json:"-"`
-	Token          string `json:"-"`
 	BuildScript    string `json:"build_script"`
 	GitUrl         string `json:"git_url"`
 	GitSecretKey   string `json:"git_secret_key"`
@@ -355,8 +354,7 @@ func (b *Build) tailBuildOutput(ctx context.Context) {
 
 	if err != nil {
 		log.Printf(
-			"[build %s output error] %s",
-			b.Token,
+			"[build output error] %s",
 			err.Error(),
 		)
 
@@ -379,8 +377,7 @@ func (b *Build) tailBuildOutput(ctx context.Context) {
 
 	for line := range t.Lines {
 		log.Printf(
-			"[build %s output] %s",
-			b.Token,
+			"[build output] %s",
 			line.Text,
 		)
 	}
