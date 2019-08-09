@@ -76,8 +76,6 @@ func main() {
 		Handler: handlers.LoggingHandler(mux),
 	})
 
-	go runSQSListener(ctx)
-
 	go func() {
 		sigchan := make(chan os.Signal, 1)
 		signal.Notify(sigchan, os.Interrupt, os.Kill, syscall.SIGTERM)

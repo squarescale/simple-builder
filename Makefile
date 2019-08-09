@@ -1,12 +1,11 @@
 .DEFAULT_GOAL := build
 VERSION = $(shell git describe --always --dirty)
-GOTAGS ?= sqs
 
 deps: ## Dependencies
 	go get ./...
 
 build: deps ## Build
-	go build -tags "$(GOTAGS)" -ldflags "-X main.version=$(VERSION)" .
+	go build -ldflags "-X main.version=$(VERSION)" .
 
 test: ## Run tests
 	go test ./...
