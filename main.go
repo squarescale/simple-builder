@@ -24,10 +24,10 @@ var (
 )
 
 func main() {
-	banner()
-
 	err := checkFlags()
 	fatal(err)
+
+	banner()
 
 	ctx, cancelFunc := context.WithCancel(
 		context.Background(),
