@@ -1,0 +1,12 @@
+{
+  "build_script": "foo",
+
+  "callbacks": ["cb1", "cb2"],
+
+  "git_url": "a",
+  "git_branch": "b",
+  "git_checkout_dir": "c",
+  "git_secret_key": "d",
+  "git_full_clone": true,
+  "git_recursive": true
+}
