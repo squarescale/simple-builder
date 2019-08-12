@@ -14,7 +14,6 @@ import (
 	"github.com/hpcloud/tail"
 	"github.com/squarescale/simple-builder/pkg/gitcloner"
 	"github.com/squarescale/simple-builder/pkg/scriptrunner"
-	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/rs/zerolog"
 )
@@ -88,9 +87,7 @@ func (b *Builder) Run() error {
 		b.notifyCallbacks()
 	}()
 
-	if b.isTerminal() {
-		go b.tailBuildOutput(b.ctx)
-	}
+	go b.tailBuildOutput(b.ctx)
 
 	err := b.cloner.Run()
 	if err != nil {
@@ -197,12 +194,6 @@ func (b *Builder) appendError(e error) {
 	b.Errors = append(
 		b.Errors,
 		&BuilderError{e},
-	)
-}
-
-func (b *Builder) isTerminal() bool {
-	return terminal.IsTerminal(
-		int(os.Stdout.Fd()),
 	)
 }
 

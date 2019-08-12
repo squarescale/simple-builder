@@ -8,7 +8,6 @@ require (
 	github.com/rs/zerolog v1.15.0
 	github.com/squarescale/libsqsc v0.0.0-20190806123146-9602bc00c253
 	github.com/stretchr/testify v1.3.0
-	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	gopkg.in/fsnotify.v1 v1.4.2 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )
