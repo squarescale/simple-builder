@@ -67,7 +67,7 @@ type BuildDescriptorWithCallback struct {
 }
 
 func runBuild(ctx context.Context, wg *sync.WaitGroup, cfgFile string) (*build.Build, error) {
-	desc, err := parseJobFile(*flagBuildJob)
+	desc, err := parseJobFile(cfgFile)
 	if err != nil {
 		return nil, err
 	}
