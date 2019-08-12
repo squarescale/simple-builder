@@ -144,10 +144,11 @@ func (b *Builder) initScriptRunner() {
 
 	b.runner = scriptrunner.New(b.ctx, &scriptrunner.Config{
 		Script:   cfg.Script,
-		WorkDir:  b.workDir,
 		ExtraEnv: commonEnv(b.workDir),
+		Logger:   b.logger,
 
-		Logger: b.logger,
+		//XXX: because the script must be executed at the root of the git repo
+		WorkDir: b.cloner.Cfg.CheckoutDir,
 	})
 }
 
@@ -173,7 +174,6 @@ func (b *Builder) notifyCallbacks() error {
 		return err
 	}
 
-	fmt.Println(string(data))
 	for _, cb := range b.Cfg.Callbacks {
 		_, err := http.Post(
 			cb,
