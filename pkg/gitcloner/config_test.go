@@ -17,23 +17,27 @@ func (s *ConfigTestSuite) TestSetCheckoutDir() {
 		expectedCheckoutDir string
 	}{
 		{
-			desc:                "checkout dir specified",
-			c:                   &Config{CheckoutDir: "a"},
+			desc: "checkout dir specified",
+			c: &Config{
+				CheckoutDir: "a",
+			},
 			expectedCheckoutDir: "a",
 		},
 		{
 			desc: "checkout dir base on repo URL with trailing .git",
 			c: &Config{
+				WorkDir: "/b",
 				RepoURL: "foo.git",
 			},
-			expectedCheckoutDir: "foo",
+			expectedCheckoutDir: "/b/foo",
 		},
 		{
 			desc: "checkout dir base on repo URL no trailing .git",
 			c: &Config{
+				WorkDir: "/c",
 				RepoURL: "bar",
 			},
-			expectedCheckoutDir: "bar",
+			expectedCheckoutDir: "/c/bar",
 		},
 	}
 

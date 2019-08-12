@@ -30,9 +30,13 @@ func (c *Config) setCheckoutDir() {
 		return
 	}
 
-	c.CheckoutDir = filepath.Base(c.RepoURL)
+	d := filepath.Base(c.RepoURL)
 
-	if strings.HasSuffix(c.CheckoutDir, ".git") {
-		c.CheckoutDir = c.CheckoutDir[:len(c.CheckoutDir)-4]
+	if strings.HasSuffix(d, ".git") {
+		d = d[:len(d)-4]
 	}
+
+	c.CheckoutDir = filepath.Join(
+		c.WorkDir, d,
+	)
 }
