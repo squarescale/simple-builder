@@ -35,7 +35,7 @@ func (s *ConfigTestSuite) TestNewConfigFromFile() {
 		},
 
 		ScriptRunner: &scriptrunner.Config{
-			Script: "foo",
+			ScriptContents: "foo",
 		},
 
 		Callbacks: []string{"cb1", "cb2"},

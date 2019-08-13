@@ -40,23 +40,23 @@ func (s *ScriptRunnerTestSuite) TestWriteBuildFile() {
 	r := New(
 		context.TODO(),
 		&Config{
-			Script:  "plop",
-			WorkDir: s.tmpDir,
+			ScriptContents: "plop",
+			ScriptFile:     buildFile,
 		},
 	)
 
-	bf, err := r.writeBuildFile()
+	err := r.writeBuildFile()
 	s.Nil(err)
-	s.NotNil(bf)
+	s.NotNil(r.Cfg.ScriptFile)
 
-	s.Equal(buildFile, bf)
-	s.FileExists(bf)
+	s.Equal(r.Cfg.ScriptFile, buildFile)
+	s.FileExists(r.Cfg.ScriptFile)
 
-	info, err := os.Stat(bf)
+	info, err := os.Stat(r.Cfg.ScriptFile)
 	s.Nil(err)
 	s.Equal(info.Mode(), os.FileMode(0700))
 
-	buff, err := ioutil.ReadFile(bf)
+	buff, err := ioutil.ReadFile(r.Cfg.ScriptFile)
 	s.Nil(err)
 	s.Equal(buff, []byte("plop"))
 }
@@ -83,7 +83,8 @@ func (s *ScriptRunnerTestSuite) TestRunSuccess() {
 	defer logFile.Close()
 
 	c := New(ctx, &Config{
-		Script: "#!/bin/bash\nls\nbasename \"$PWD\"\necho OK\nexit 0",
+		ScriptContents: "#!/bin/bash\nls\nbasename \"$PWD\"\necho OK\nexit 0",
+		ScriptFile:     filepath.Join(s.tmpDir, "build"),
 
 		WorkDir:  s.tmpDir,
 		Logger:   zerolog.New(logFile).With().Timestamp().Logger(),

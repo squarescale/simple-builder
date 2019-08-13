@@ -140,7 +140,11 @@ func (b *Builder) initScriptRunner() {
 	cfg := b.Cfg.ScriptRunner
 
 	b.runner = scriptrunner.New(b.ctx, &scriptrunner.Config{
-		Script:   cfg.Script,
+		ScriptContents: cfg.ScriptContents,
+		ScriptFile: filepath.Join(
+			b.workDir, "build",
+		),
+
 		ExtraEnv: commonEnv(b.workDir),
 		Logger:   b.logger,
 

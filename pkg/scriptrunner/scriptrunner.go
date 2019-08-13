@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 )
 
 type Runner struct {
@@ -34,12 +33,14 @@ func (r *Runner) Run() error {
 		return err
 	}
 
-	bf, err := r.writeBuildFile()
+	err = r.writeBuildFile()
 	if err != nil {
 		return err
 	}
 
-	cmd := exec.Command(bf)
+	cmd := exec.Command(
+		r.Cfg.ScriptFile,
+	)
 
 	cmd.Dir = r.Cfg.WorkDir
 
@@ -91,18 +92,12 @@ func (r *Runner) Run() error {
 
 // ----
 
-func (r *Runner) writeBuildFile() (string, error) {
-	buildFile := filepath.Join(
-		r.Cfg.WorkDir, "build",
-	)
-
-	err := ioutil.WriteFile(
-		buildFile,
-		[]byte(r.Cfg.Script),
+func (r *Runner) writeBuildFile() error {
+	return ioutil.WriteFile(
+		r.Cfg.ScriptFile,
+		[]byte(r.Cfg.ScriptContents),
 		0700,
 	)
-
-	return buildFile, err
 }
 
 func (r *Runner) dumpCmd(cmd *exec.Cmd) {
