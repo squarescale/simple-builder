@@ -12,18 +12,11 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-const SECRET_DEPLOY_KEY = `-----BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
-QyNTUxOQAAACBdAHOwhOxFF3/kjC1JET9dWPdvh8PVt+gJ9ckmEXJlAQAAAJhtJ3SzbSd0
-swAAAAtzc2gtZWQyNTUxOQAAACBdAHOwhOxFF3/kjC1JET9dWPdvh8PVt+gJ9ckmEXJlAQ
-AAAECEgoZ07SQ9CJ5AaB2rtMXI08sMvtMxm9gJMzFfvWf3pl0Ac7CE7EUXf+SMLUkRP11Y
-92+Hw9W36An1ySYRcmUBAAAAEG1pbGRyZWRAbW9pcmFpbmUBAgMEBQ==
------END OPENSSH PRIVATE KEY-----
-`
+/*
+	./testdata/id.pub must be installed as a deploy key here:
 
-// must be installed as a deploy key here:
-// https://github.com/squarescale/simple-builder/settings/keys
-const PUBLIC_DEPLOY_KEY = `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF0Ac7CE7EUXf+SMLUkRP11Y92+Hw9W36An1ySYRcmUB`
+	- https://github.com/squarescale/simple-builder/settings/keys
+*/
 
 type GitClonerTestSuite struct {
 	suite.Suite
@@ -142,6 +135,12 @@ func (s *GitClonerTestSuite) TestRunSuccess() {
 	)
 	defer cancelFunc()
 
+	secretDeployKey, err := ioutil.ReadFile(
+		"testdata/id",
+	)
+	s.Nil(err)
+	s.NotNil(secretDeployKey)
+
 	logFile, err := os.OpenFile(
 		filepath.Join(s.tmpDir, "all.log"),
 		os.O_WRONLY|os.O_APPEND|os.O_CREATE,
@@ -154,7 +153,7 @@ func (s *GitClonerTestSuite) TestRunSuccess() {
 	c := New(ctx, &Config{
 		RepoURL: "git@github.com:squarescale/simple-builder.git",
 
-		SSHKeyContents: SECRET_DEPLOY_KEY,
+		SSHKeyContents: string(secretDeployKey),
 		SSHKeyFile:     "id",
 		SSHKeyDir:      filepath.Join(s.tmpDir, ".ssh"),
 
