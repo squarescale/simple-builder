@@ -32,11 +32,10 @@ func (s *BuilderTestSuite) TestFullBuild() {
 
 	s.runPrechecks(b)
 
-	fmt.Println(b.workDir)
-	//defer func() {
-	//	err := os.RemoveAll(b.workDir)
-	//	s.Nil(err)
-	//}()
+	defer func() {
+		err := os.RemoveAll(b.workDir)
+		s.Nil(err)
+	}()
 
 	prvKey, err := ioutil.ReadFile(
 		"testdata/id",
