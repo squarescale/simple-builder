@@ -36,7 +36,6 @@ type Builder struct {
 
 	ctx        context.Context
 	cancelFunc context.CancelFunc
-	Status     status
 
 	wg *sync.WaitGroup
 }
@@ -70,7 +69,6 @@ func New(ctx context.Context, cfgFile string) (*Builder, error) {
 
 		ctx:        ctx2,
 		cancelFunc: cancelFunc,
-		Status:     STATUS_INIT,
 	}
 
 	// ---
@@ -91,31 +89,20 @@ func (b *Builder) Run() error {
 
 	go b.tailBuildOutput(b.ctx)
 
-	b.setStatus(STATUS_GIT_CLONE)
-
 	err := b.cloner.Run()
 	if err != nil {
 		b.appendError(err)
 		b.setProcessState(b.cloner.ProcessState)
-		b.setStatus(STATUS_FAILURE)
-
 		return err
 	}
-
-	b.setStatus(STATUS_BUILD)
 
 	err = b.runner.Run()
 	if err != nil {
 		b.appendError(err)
 		b.setProcessState(b.runner.ProcessState)
-		b.setStatus(STATUS_FAILURE)
-
-		return err
 	}
 
-	b.setStatus(STATUS_SUCCESS)
-
-	return nil
+	return err
 }
 
 func (b *Builder) Cleanup() {
@@ -127,7 +114,7 @@ func (b *Builder) setProcessState(s *os.ProcessState) {
 }
 
 func (b *Builder) initGitCloner() {
-	// XXX: forced in order to keep buggy legacy behavior
+	// XXX: forced to keep buggy legacy behavior
 	b.Cfg.GitCloner.Recursive = true
 
 	cfg := b.Cfg.GitCloner
@@ -248,10 +235,6 @@ func (b *Builder) tailBuildOutput(ctx context.Context) {
 	}
 
 	tailStop()
-}
-
-func (b *Builder) setStatus(s status) {
-	b.Status = s
 }
 
 // ---
