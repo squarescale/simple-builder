@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/squarescale/libsqsc/signals"
@@ -32,8 +30,6 @@ func main() {
 
 	b, err := builder.New(ctx, *flagBuildJob)
 	fatal(err)
-
-	go startHTTPServer(b)
 
 	err = b.Run()
 	fatal(err)
@@ -75,30 +71,4 @@ func checkFlags() error {
 	}
 
 	return nil
-}
-
-func startHTTPServer(b *builder.Builder) {
-	http.HandleFunc("/health", func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-
-		s := http.StatusInternalServerError
-
-		if b.Status != builder.STATUS_FAILURE {
-			s = http.StatusOK
-		}
-
-		w.WriteHeader(s)
-
-		out := struct {
-			Status string `json:"status"`
-		}{
-			Status: b.Status.String(),
-		}
-
-		json.NewEncoder(w).Encode(out)
-	})
-
-	fatal(
-		http.ListenAndServe(":8000", nil),
-	)
 }
