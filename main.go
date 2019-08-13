@@ -9,12 +9,11 @@ import (
 
 	"github.com/squarescale/libsqsc/signals"
 	"github.com/squarescale/simple-builder/pkg/builder"
+	"github.com/squarescale/simple-builder/pkg/version"
 )
 
 var (
 	flagBuildJob = flag.String("build-job", "", "Build job file (single job mode)")
-
-	version string
 )
 
 func main() {
@@ -44,8 +43,10 @@ func main() {
 
 func banner() {
 	log.Printf(
-		"Starting Simple Builder version %s...",
-		version,
+		"Starting Simple Builder version %s/%s (%s)...",
+		version.GitBranch,
+		version.GitCommit,
+		version.BuildDate,
 	)
 
 	log.Printf(

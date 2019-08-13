@@ -1,0 +1,3 @@
+[submodule "sqsc.mk"]
+	path = sqsc.mk
+	url = git@github.com:squarescale/sqsc.mk.git
