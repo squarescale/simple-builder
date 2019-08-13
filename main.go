@@ -6,7 +6,6 @@ import (
 	"flag"
 	"log"
 	"os"
-	"sync"
 
 	"github.com/squarescale/libsqsc/signals"
 	"github.com/squarescale/simple-builder/pkg/builder"
@@ -16,7 +15,6 @@ var (
 	flagBuildJob = flag.String("build-job", "", "Build job file (single job mode)")
 
 	version string
-	wg      sync.WaitGroup
 )
 
 func main() {
