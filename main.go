@@ -37,6 +37,8 @@ func main() {
 	err = b.Run()
 	fatal(err)
 
+	b.Cleanup()
+
 	os.Exit(0)
 }
 

@@ -105,6 +105,10 @@ func (b *Builder) Run() error {
 	return err
 }
 
+func (b *Builder) Cleanup() {
+	os.RemoveAll(b.workDir)
+}
+
 func (b *Builder) setProcessState(s *os.ProcessState) {
 	b.ProcessState = s
 }
