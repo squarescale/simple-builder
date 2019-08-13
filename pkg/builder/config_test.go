@@ -8,11 +8,11 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type BuilderTestSuite struct {
+type ConfigTestSuite struct {
 	suite.Suite
 }
 
-func (s *BuilderTestSuite) TestNewConfigFromFile() {
+func (s *ConfigTestSuite) TestNewConfigFromFile() {
 	c, err := NewConfigFromFile("not.found")
 	s.Nil(c)
 	s.NotNil(err)
@@ -42,6 +42,6 @@ func (s *BuilderTestSuite) TestNewConfigFromFile() {
 	})
 }
 
-func TestBuilderTestSuite(t *testing.T) {
-	suite.Run(t, new(BuilderTestSuite))
+func TestConfigTestSuite(t *testing.T) {
+	suite.Run(t, new(ConfigTestSuite))
 }
