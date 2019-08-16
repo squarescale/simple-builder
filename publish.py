@@ -67,7 +67,7 @@ release_id = str(created.json()["id"])
 # Push executable contents
 for executable in bin_files:
     print("Push executable " + executable + " to release draft...")
-    params = { "name": executable }
+    params = { "name": os.path.basename(executable) }
     headers = { "Content-Type": "application/octet-stream" }
     upload_url = "https://uploads.github.com/repos/%s/releases/%s/assets" % \
             (github_repo, release_id)
