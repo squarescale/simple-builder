@@ -14,6 +14,7 @@ import (
 	"github.com/hpcloud/tail"
 	"github.com/squarescale/simple-builder/pkg/gitcloner"
 	"github.com/squarescale/simple-builder/pkg/scriptrunner"
+	"github.com/squarescale/simple-builder/pkg/version"
 
 	"github.com/rs/zerolog"
 )
@@ -81,6 +82,8 @@ func New(ctx context.Context, cfgFile string) (*Builder, error) {
 }
 
 func (b *Builder) Run() error {
+	b.logBuildInfo()
+
 	defer func() {
 		b.logFile.Close()
 		b.fetchBuildOutput()
@@ -235,6 +238,14 @@ func (b *Builder) tailBuildOutput(ctx context.Context) {
 	}
 
 	tailStop()
+}
+
+func (b *Builder) logBuildInfo() {
+	b.logger.Info().
+		Str("branch", version.GitBranch).
+		Str("commit", version.GitCommit).
+		Str("build_date", version.BuildDate).
+		Msg("starting ....")
 }
 
 // ---
