@@ -175,10 +175,11 @@ func (s *GitClonerTestSuite) TestRunSuccess() {
 
 func (s *GitClonerTestSuite) extraEnv() []string {
 	env := map[string]string{
-		"HOME":  s.tmpDir,
-		"PATH":  os.Getenv("PATH"),
-		"SHELL": os.Getenv("SHELL"),
-		"USER":  os.Getenv("USER"),
+		"HOME":          s.tmpDir,
+		"PATH":          os.Getenv("PATH"),
+		"SHELL":         os.Getenv("SHELL"),
+		"USER":          os.Getenv("USER"),
+		"SSH_AUTH_SOCK": os.Getenv("SSH_AUTH_SOCK"),
 	}
 
 	// ---

@@ -40,6 +40,12 @@ func (s *BuilderTestSuite) TestFullBuild() {
 	s.Nil(err)
 
 	b.cloner.Cfg.SSHKeyContents = string(prvKey)
+	b.cloner.Cfg.ExtraEnv = append(
+		b.cloner.Cfg.ExtraEnv,
+		fmt.Sprintf(
+			"SSH_AUTH_SOCK=%s", os.Getenv("SSH_AUTH_SOCK"),
+		),
+	)
 
 	err = b.Run()
 	s.Nil(err)
