@@ -32,9 +32,9 @@ func main() {
 	fatal(err)
 
 	err = b.Run()
-	fatal(err)
 
 	b.Cleanup()
+	fatal(err)
 
 	os.Exit(0)
 }
