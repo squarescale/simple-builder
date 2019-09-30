@@ -56,7 +56,6 @@ Name | Usage
 `SQSC_PROJECT_UUID` | Project UUID
 `SQSC_ENVIRONMENT` | AWS environment (`production`, `stating`, etc)
 
-
 ## Behaviour
 
 For every invocation, `simple-builder` will execute the following tasks:
@@ -64,6 +63,21 @@ For every invocation, `simple-builder` will execute the following tasks:
 1. `git clone` the repository provided in `git_url` using `git_secret_key`
 2. Generate a script file containing `build_script` and execute it
 3. Send the entire build log to `callbacks` one the script is executed
+
+```mermaidjs
+sequenceDiagram
+
+    participant web
+    participant nomad
+    participant simple builder
+
+    web ->> nomad: Triggers parameterized job
+    nomad -->> simple builder: launch simple builder
+    simple builder -->> simple builder: git clone
+    simple builder -->> simple builder: execute build script
+    simple builder -->> web: send build logs
+```
+[view diagram](https://mermaidjs.github.io/mermaid-live-editor/#/view/eyJjb2RlIjoic2VxdWVuY2VEaWFncmFtXG5cbiAgICBwYXJ0aWNpcGFudCB3ZWJcbiAgICBwYXJ0aWNpcGFudCBub21hZFxuICAgIHBhcnRpY2lwYW50IHNpbXBsZSBidWlsZGVyXG5cbiAgICB3ZWIgLT4-IG5vbWFkOiBUcmlnZ2VycyBwYXJhbWV0ZXJpemVkIGpvYlxuICAgIG5vbWFkIC0tPj4gc2ltcGxlIGJ1aWxkZXI6IGxhdW5jaCBzaW1wbGUgYnVpbGRlclxuICAgIHNpbXBsZSBidWlsZGVyIC0tPj4gc2ltcGxlIGJ1aWxkZXI6IGdpdCBjbG9uZVxuICAgIHNpbXBsZSBidWlsZGVyIC0tPj4gc2ltcGxlIGJ1aWxkZXI6IGV4ZWN1dGUgYnVpbGQgc2NyaXB0XG4gICAgc2ltcGxlIGJ1aWxkZXIgLS0-PiB3ZWI6IHNlbmQgYnVpbGQgbG9ncyIsIm1lcm1haWQiOnsidGhlbWUiOiJuZXV0cmFsIn19)
 
 ## Releasing simple-builder
 
