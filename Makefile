@@ -5,7 +5,7 @@ include sqsc.mk/init.mk
 GO_BINARY = bin/simple-builder-$(OS)-amd64
 
 .ONESHELL:
-publish: gobuild
+publish: gobuild  ## Publish a github release
 	cp -f bin/simple-builder $(GO_BINARY)
 
 	GITHUB_USER_TOKEN=$(GITHUB_USER_TOKEN) \
