@@ -8,8 +8,8 @@ import (
 	"os"
 
 	"github.com/squarescale/libsqsc/signals"
-	"github.com/squarescale/simple-builder/pkg/builder"
-	"github.com/squarescale/simple-builder/pkg/version"
+	"github.com/squarescale/simple-builder/lib/builder"
+	"github.com/squarescale/simple-builder/lib/version"
 )
 
 var (

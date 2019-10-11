@@ -12,9 +12,9 @@ import (
 	"sync"
 
 	"github.com/hpcloud/tail"
-	"github.com/squarescale/simple-builder/pkg/gitcloner"
-	"github.com/squarescale/simple-builder/pkg/scriptrunner"
-	"github.com/squarescale/simple-builder/pkg/version"
+	"github.com/squarescale/simple-builder/lib/gitcloner"
+	"github.com/squarescale/simple-builder/lib/scriptrunner"
+	"github.com/squarescale/simple-builder/lib/version"
 
 	"github.com/rs/zerolog"
 )

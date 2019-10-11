@@ -3,8 +3,8 @@ package builder
 import (
 	"testing"
 
-	"github.com/squarescale/simple-builder/pkg/gitcloner"
-	"github.com/squarescale/simple-builder/pkg/scriptrunner"
+	"github.com/squarescale/simple-builder/lib/gitcloner"
+	"github.com/squarescale/simple-builder/lib/scriptrunner"
 	"github.com/stretchr/testify/suite"
 )
 
