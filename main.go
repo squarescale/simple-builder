@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -14,6 +15,7 @@ import (
 
 var (
 	flagBuildJob = flag.String("build-job", "", "Build job file (single job mode)")
+	flagVersion  = flag.Bool("version", false, "Show version")
 )
 
 func main() {
@@ -43,10 +45,8 @@ func main() {
 
 func banner() {
 	log.Printf(
-		"Starting Simple Builder version %s/%s (%s)...",
-		version.GitBranch,
-		version.GitCommit,
-		version.BuildDate,
+		"Starting Simple Builder version %s ...",
+		version.String(),
 	)
 
 	log.Printf(
@@ -63,6 +63,11 @@ func fatal(e error) {
 
 func checkFlags() error {
 	flag.Parse()
+
+	if *flagVersion {
+		fmt.Println(version.String())
+		os.Exit(0)
+	}
 
 	if *flagBuildJob == "" {
 		return errors.New(
