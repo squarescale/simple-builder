@@ -11,14 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/suite"
+	"github.com/stretchr/testify/require"
 )
 
-type BuilderTestSuite struct {
-	suite.Suite
-}
-
-func (s *BuilderTestSuite) TestFullBuild() {
+func TestFullBuild(t *testing.T) {
 	ctx, cancelFunc := context.WithCancel(
 		context.Background(),
 	)
@@ -28,16 +24,16 @@ func (s *BuilderTestSuite) TestFullBuild() {
 	b, err := New(
 		ctx, "testdata/testfullbuild.json",
 	)
-	s.Nil(err)
+	require.Nil(t, err)
 
-	s.runPrechecks(b)
+	runPrechecks(t, b)
 
 	defer b.Cleanup()
 
 	prvKey, err := ioutil.ReadFile(
 		"testdata/id",
 	)
-	s.Nil(err)
+	require.Nil(t, err)
 
 	b.cloner.Cfg.SSHKeyContents = string(prvKey)
 	b.cloner.Cfg.ExtraEnv = append(
@@ -48,51 +44,51 @@ func (s *BuilderTestSuite) TestFullBuild() {
 	)
 
 	err = b.Run()
-	s.Nil(err)
+	require.Nil(t, err)
 
-	s.runGitChecks(b)
+	runGitChecks(t, b)
 
-	s.Empty(b.Errors)
-	s.Nil(b.ProcessState)
-	s.NotEmpty(b.Output)
+	require.Empty(t, b.Errors)
+	require.Nil(t, b.ProcessState)
+	require.NotEmpty(t, b.Output)
 
-	s.runScriptChecks(b)
+	runScriptChecks(t, b)
 }
 
-func (s *BuilderTestSuite) runPrechecks(b *Builder) {
-	s.NotNil(b)
+func runPrechecks(t *testing.T, b *Builder) {
+	require.NotNil(t, b)
 
-	s.Empty(b.Output)
-	s.Empty(b.Errors)
-	s.Nil(b.ProcessState)
+	require.Empty(t, b.Output)
+	require.Empty(t, b.Errors)
+	require.Nil(t, b.ProcessState)
 
-	s.NotNil(b.logger)
+	require.NotNil(t, b.logger)
 
-	s.isAbsolutePath(b.workDir)
-	s.DirExists(b.workDir)
+	isAbsolutePath(t, b.workDir)
+	require.DirExists(t, b.workDir)
 
-	s.checkLogFile(b)
+	checkLogFile(t, b)
 
-	s.True(b.cloner.Cfg.Recursive)
+	require.True(t, b.cloner.Cfg.Recursive)
 
-	s.isAbsolutePath(b.cloner.Cfg.SSHKeyDir)
+	isAbsolutePath(t, b.cloner.Cfg.SSHKeyDir)
 
-	s.isAbsolutePath(b.cloner.Cfg.CheckoutDir)
-	s.ensureDoesNotExist(b.cloner.Cfg.CheckoutDir)
+	isAbsolutePath(t, b.cloner.Cfg.CheckoutDir)
+	ensureDoesNotExist(t, b.cloner.Cfg.CheckoutDir)
 
-	s.isAbsolutePath(b.runner.Cfg.WorkDir)
+	isAbsolutePath(t, b.runner.Cfg.WorkDir)
 
-	s.Equal(
+	require.Equal(t,
 		b.runner.Cfg.WorkDir,
 		b.cloner.Cfg.CheckoutDir,
 	)
 }
 
-func (s *BuilderTestSuite) runGitChecks(b *Builder) {
+func runGitChecks(t *testing.T, b *Builder) {
 	kd := b.cloner.Cfg.SSHKeyDir
 
-	s.DirExists(kd)
-	s.FileExists(
+	require.DirExists(t, kd)
+	require.FileExists(t,
 		filepath.Join(
 			kd, b.cloner.Cfg.SSHKeyFile,
 		),
@@ -102,15 +98,15 @@ func (s *BuilderTestSuite) runGitChecks(b *Builder) {
 
 	cd := b.cloner.Cfg.CheckoutDir
 
-	s.DirExists(cd)
+	require.DirExists(t, cd)
 
-	s.FileExists(
+	require.FileExists(t,
 		filepath.Join(cd, "README.md"),
 	)
 }
 
-func (s *BuilderTestSuite) runScriptChecks(b *Builder) {
-	s.FileExists(
+func runScriptChecks(t *testing.T, b *Builder) {
+	require.FileExists(t,
 		b.runner.Cfg.ScriptFile,
 	)
 
@@ -129,32 +125,32 @@ func (s *BuilderTestSuite) runScriptChecks(b *Builder) {
 	}
 
 	for _, m := range messages {
-		s.checkOutputContains(b, m)
+		checkOutputContains(t, b, m)
 	}
 }
 
-func (s *BuilderTestSuite) checkLogFile(b *Builder) {
-	s.FileExists(b.logFile.Name())
+func checkLogFile(t *testing.T, b *Builder) {
+	require.FileExists(t, b.logFile.Name())
 
 	info, err := os.Stat(b.logFile.Name())
-	s.Nil(err)
-	s.Equal(info.Mode(), os.FileMode(0600))
+	require.Nil(t, err)
+	require.Equal(t, info.Mode(), os.FileMode(0600))
 }
 
-func (s *BuilderTestSuite) isAbsolutePath(p string) {
-	s.True(
+func isAbsolutePath(t *testing.T, p string) {
+	require.True(t,
 		path.IsAbs(p),
 	)
 }
 
-func (s *BuilderTestSuite) ensureDoesNotExist(path string) {
+func ensureDoesNotExist(t *testing.T, path string) {
 	_, err := os.Stat(path)
-	s.NotNil(err)
-	s.True(os.IsNotExist(err))
+	require.NotNil(t, err)
+	require.True(t, os.IsNotExist(err))
 }
 
-func (s *BuilderTestSuite) checkOutputContains(b *Builder, msg string) {
-	s.NotEmpty(b.Output)
+func checkOutputContains(t *testing.T, b *Builder, msg string) {
+	require.NotEmpty(t, b.Output)
 
 	type Line struct {
 		Time    string `json:"-"`
@@ -174,7 +170,7 @@ func (s *BuilderTestSuite) checkOutputContains(b *Builder, msg string) {
 			[]byte(logLine), &l,
 		)
 
-		s.Nil(err)
+		require.Nil(t, err)
 
 		if l.Message == msg {
 			found = true
@@ -182,12 +178,9 @@ func (s *BuilderTestSuite) checkOutputContains(b *Builder, msg string) {
 		}
 	}
 
-	s.True(
+	require.True(
+		t,
 		found,
 		fmt.Sprintf("Expected to find %q", msg),
 	)
-}
-
-func TestBuilderTestSuite(t *testing.T) {
-	suite.Run(t, new(BuilderTestSuite))
 }

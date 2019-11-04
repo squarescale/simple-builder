@@ -5,24 +5,20 @@ import (
 
 	"github.com/squarescale/simple-builder/lib/gitcloner"
 	"github.com/squarescale/simple-builder/lib/scriptrunner"
-	"github.com/stretchr/testify/suite"
+	"github.com/stretchr/testify/require"
 )
 
-type ConfigTestSuite struct {
-	suite.Suite
-}
-
-func (s *ConfigTestSuite) TestNewConfigFromFile() {
+func testNewConfigFromFile(t *testing.T) {
 	c, err := NewConfigFromFile("not.found")
-	s.Nil(c)
-	s.NotNil(err)
+	require.Nil(t, c)
+	require.NotNil(t, err)
 
 	// ---
 
 	c, err = NewConfigFromFile("testdata/config.json")
-	s.Nil(err)
+	require.Nil(t, err)
 
-	s.Equal(c, &Config{
+	require.Equal(t, c, &Config{
 		GitCloner: &gitcloner.Config{
 			RepoURL:     "a",
 			Branch:      "b",
@@ -40,8 +36,4 @@ func (s *ConfigTestSuite) TestNewConfigFromFile() {
 
 		Callbacks: []string{"cb1", "cb2"},
 	})
-}
-
-func TestConfigTestSuite(t *testing.T) {
-	suite.Run(t, new(ConfigTestSuite))
 }

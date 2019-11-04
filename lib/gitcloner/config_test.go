@@ -3,14 +3,10 @@ package gitcloner
 import (
 	"testing"
 
-	"github.com/stretchr/testify/suite"
+	"github.com/stretchr/testify/require"
 )
 
-type ConfigTestSuite struct {
-	suite.Suite
-}
-
-func (s *ConfigTestSuite) TestSetCheckoutDir() {
+func testSetCheckoutDir(t *testing.T) {
 	testCases := []struct {
 		desc                string
 		c                   *Config
@@ -44,14 +40,10 @@ func (s *ConfigTestSuite) TestSetCheckoutDir() {
 	for _, tc := range testCases {
 		tc.c.setCheckoutDir()
 
-		s.Equal(
+		require.Equal(t,
 			tc.expectedCheckoutDir,
 			tc.c.CheckoutDir,
 			tc.desc,
 		)
 	}
-}
-
-func TestConfigTestSuite(t *testing.T) {
-	suite.Run(t, new(ConfigTestSuite))
 }
